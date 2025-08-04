@@ -1,6 +1,9 @@
+"use client";
+
 import { Button } from "./ui/button";
+import { useState } from "react";
 import { NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuLink, NavigationMenuList, NavigationMenuTrigger } from "./ui/navigation-menu";
-import { Plus, Settings, Menu, Home, Receipt, CreditCard, Banknote, Building, Target } from "lucide-react";
+import { Plus, Settings, Menu, Home, Receipt, CreditCard, Banknote, Building, Target, CoinsIcon, X } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 
 export type PageType = 'dashboard' | 'expenses' | 'transactions' | 'pay-bills' | 'add-bank' | 'budget';
@@ -20,13 +23,14 @@ const navigationItems = [
 ];
 
 export function Header({ currentPage, onPageChange }: HeaderProps) {
+   const [isSheetOpen, setIsSheetOpen] = useState(false);
   return (
-    <header className="border-b bg-card shadow-sm">
+    <header className="border-b bg-background/80 backdrop-blur-md shadow-sm">
       <div className="container mx-auto px-4 py-6">
         <div className="flex items-center justify-between gap-4">
           {/* Logo and Title */}
           <div>
-            <h1 className="text-2xl font-bold text-foreground">💰 Budget Manager</h1>
+            <h1 className="text-2xl font-bold text-foreground"><CoinsIcon></CoinsIcon> Budget Manager</h1>
             <p className="text-muted-foreground text-sm">
               Track your finances and stay on budget
             </p>
@@ -73,28 +77,31 @@ export function Header({ currentPage, onPageChange }: HeaderProps) {
 
           {/* Mobile Navigation */}
           <div className="md:hidden">
-            <Sheet>
+            <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
               <SheetTrigger asChild>
                 <Button variant="outline" size="icon">
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
               <SheetContent side="right" className="w-[260px] sm:w-[300px]">
-                <div className="py-6">
-                  <h2 className="text-lg font-semibold mb-4">Navigation</h2>
+                <div className="mt-4 py-6">
                   <div className="space-y-2">
                     {navigationItems.map((item) => {
                       const IconComponent = item.icon;
                       return (
                         <Button
-                          key={item.id}
-                          variant={currentPage === item.id ? "default" : "ghost"}
-                          className="w-full justify-start"
-                          onClick={() => onPageChange(item.id)}
-                        >
-                          <IconComponent className="h-4 w-4 mr-2" />
-                          {item.label}
-                        </Button>
+  key={item.id}
+  variant={currentPage === item.id ? "default" : "ghost"}
+  className="w-full justify-start"
+  onClick={() => {
+    onPageChange(item.id);
+    setIsSheetOpen(false); // Close the sheet
+  }}
+>
+  <IconComponent className="h-4 w-4 mr-2" />
+  {item.label}
+</Button>
+
                       );
                     })}
                   </div>
