@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
@@ -6,137 +6,357 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Progress } from "./ui/progress";
-import { AlertCircle, CheckCircle, Clock, CreditCard, Building, Zap, Car, Home, Phone, Wifi } from "lucide-react";
+import { AlertCircle, CheckCircle, Clock, CreditCard, Building, Zap, Car, Home, Phone, Wifi, Loader2, Plus, Calendar, X } from "lucide-react";
 import { Alert, AlertDescription } from "./ui/alert";
+import { Skeleton } from "./ui/skeleton";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
+import { Checkbox } from "./ui/checkbox";
+import { Textarea } from "./ui/textarea";
+
+interface Category {
+  id: string;
+  name: string;
+  icon: string;
+  budgetLimit?: number;
+  spent?: number;
+}
 
 interface Bill {
   id: string;
-  name: string;
-  category: string;
+  description: string;
   amount: number;
   dueDate: string;
-  status: 'pending' | 'paid' | 'overdue';
-  autoPayEnabled: boolean;
-  budgetCategory: string;
-  icon: any;
+  billStatus: 'PENDING' | 'PAID';
+  autoPay: boolean;
+  currency: string;
+  category: {
+    id: string;
+    name: string;
+    icon: string;
+  };
 }
 
-const mockBills: Bill[] = [
-  {
-    id: '1',
-    name: 'EKEDC Electric Bill',
-    category: 'Bills & Utilities',
-    amount: 28500,
-    dueDate: '2024-02-15',
-    status: 'pending',
-    autoPayEnabled: true,
-    budgetCategory: 'Bills & Utilities',
-    icon: Zap
-  },
-  {
-    id: '2',
-    name: 'MTN Internet Service',
-    category: 'Bills & Utilities',
-    amount: 25000,
-    dueDate: '2024-02-18',
-    status: 'pending',
-    autoPayEnabled: false,
-    budgetCategory: 'Bills & Utilities',
-    icon: Wifi
-  },
-  {
-    id: '3',
-    name: 'Leadway Car Insurance',
-    category: 'Transportation',
-    amount: 58500,
-    dueDate: '2024-02-20',
-    status: 'pending',
-    autoPayEnabled: true,
-    budgetCategory: 'Transportation',
-    icon: Car
-  },
-  {
-    id: '4',
-    name: 'Apartment Rent - Lagos',
-    category: 'Housing',
-    amount: 450000,
-    dueDate: '2024-02-01',
-    status: 'paid',
-    autoPayEnabled: false,
-    budgetCategory: 'Bills & Utilities',
-    icon: Home
-  },
-  {
-    id: '5',
-    name: 'Airtel Phone Bill',
-    category: 'Bills & Utilities',
-    amount: 22000,
-    dueDate: '2024-02-10',
-    status: 'overdue',
-    autoPayEnabled: false,
-    budgetCategory: 'Bills & Utilities',
-    icon: Phone
-  },
-  {
-    id: '6',
-    name: 'DSTV Subscription',
-    category: 'Entertainment',
-    amount: 15700,
-    dueDate: '2024-02-12',
-    status: 'pending',
-    autoPayEnabled: true,
-    budgetCategory: 'Entertainment',
-    icon: Wifi
-  }
-];
+interface BillsSummary {
+  pending: { count: number; total: number };
+  overdue: { count: number; total: number };
+  autoPayEnabled: number;
+}
 
-const budgetAllocations = {
-  'Bills & Utilities': { allocated: 350000, spent: 175500, remaining: 174500 },
-  'Transportation': { allocated: 125000, spent: 58500, remaining: 66500 },
-  'Housing': { allocated: 450000, spent: 450000, remaining: 0 },
-  'Entertainment': { allocated: 50000, spent: 15700, remaining: 34300 }
+// Icon mapping for categories
+const getIconForCategory = (categoryName: string, iconName?: string) => {
+  const iconMap: { [key: string]: any } = {
+    'Bills & Utilities': Zap,
+    'Transportation': Car,
+    'Housing': Home,
+    'Entertainment': Wifi,
+    'Communication': Phone,
+    'Internet': Wifi,
+    'Electric': Zap,
+    'Insurance': Car,
+    'Rent': Calendar,
+    'Phone': Phone,
+    'default': Building
+  };
+
+  return iconMap[categoryName] || iconMap[iconName || 'default'] || Building;
 };
 
+// Skeleton components
+const BillCardSkeleton = () => (
+  <div className="flex items-center justify-between p-4 border rounded-lg">
+    <div className="flex items-center space-x-3">
+      <Skeleton className="h-10 w-10 rounded-lg" />
+      <div className="space-y-2">
+        <Skeleton className="h-4 w-32" />
+        <div className="flex space-x-2">
+          <Skeleton className="h-3 w-20" />
+          <Skeleton className="h-5 w-16 rounded-full" />
+        </div>
+      </div>
+    </div>
+    <div className="flex items-center space-x-3">
+      <div className="text-right space-y-1">
+        <Skeleton className="h-5 w-20" />
+        <Skeleton className="h-4 w-16" />
+      </div>
+      <Skeleton className="h-8 w-16" />
+    </div>
+  </div>
+);
+
+const SummaryCardSkeleton = () => (
+  <Card>
+    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <Skeleton className="h-4 w-24" />
+      <Skeleton className="h-4 w-4" />
+    </CardHeader>
+    <CardContent>
+      <Skeleton className="h-8 w-28 mb-1" />
+      <Skeleton className="h-3 w-16" />
+    </CardContent>
+  </Card>
+);
+
 export function PayBillsPage() {
+  const [bills, setBills] = useState<Bill[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [summary, setSummary] = useState<BillsSummary | null>(null);
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [error, setError] = useState("");
+  
+  // Add Bill Modal States
+  const [showAddBillModal, setShowAddBillModal] = useState(false);
+  const [addBillLoading, setAddBillLoading] = useState(false);
+  const [newBill, setNewBill] = useState({
+    categoryId: '',
+    amount: '',
+    description: '',
+    dueDate: '',
+    autoPay: false
+  });
 
-  const pendingBills = mockBills.filter(bill => bill.status === 'pending');
-  const overdueBills = mockBills.filter(bill => bill.status === 'overdue');
-  const totalPending = pendingBills.reduce((sum, bill) => sum + bill.amount, 0);
-  const totalOverdue = overdueBills.reduce((sum, bill) => sum + bill.amount, 0);
+  useEffect(() => {
+    fetchBills();
+    fetchCategories();
+  }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch('http://localhost:3000/categories', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch categories');
+      }
+
+      const categoriesData = await response.json();
+      setCategories(categoriesData);
+    } catch (err) {
+      console.error('Failed to fetch categories:', err);
+    }
+  };
+
+  const fetchBills = async () => {
+    try {
+      setLoading(true);
+      setError("");
+      
+      // Fetch all bills
+      const response = await fetch('http://localhost:3000/bills', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch bills');
+      }
+
+      const billsData = await response.json();
+      setBills(billsData);
+
+      // Calculate summary
+      const now = new Date();
+      const pending = billsData.filter((bill: Bill) => 
+        bill.billStatus === 'PENDING' && new Date(bill.dueDate) >= now
+      );
+      const overdue = billsData.filter((bill: Bill) => 
+        bill.billStatus === 'PENDING' && new Date(bill.dueDate) < now
+      );
+      const autoPayEnabled = billsData.filter((bill: Bill) => bill.autoPay).length;
+
+      setSummary({
+        pending: {
+          count: pending.length,
+          total: pending.reduce((sum: number, bill: Bill) => sum + bill.amount, 0)
+        },
+        overdue: {
+          count: overdue.length,
+          total: overdue.reduce((sum: number, bill: Bill) => sum + bill.amount, 0)
+        },
+        autoPayEnabled
+      });
+
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch bills');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handlePayBill = (bill: Bill) => {
     setSelectedBill(bill);
-    setPaymentAmount(bill.amount.toString());
+    setPaymentAmount((bill.amount / 100).toString()); // Convert from kobo to naira
   };
 
-  const processPayment = () => {
-    if (selectedBill) {
-      // Here you would process the payment
-      console.log(`Processing payment of $${paymentAmount} for ${selectedBill.name}`);
+  const processPayment = async () => {
+    if (!selectedBill) return;
+
+    try {
+      setPaymentLoading(true);
+      setError("");
+
+      const response = await fetch(`http://localhost:3000/bills/${selectedBill.id}/pay`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to process payment');
+      }
+
+      // Refresh bills after successful payment
+      await fetchBills();
+      
+      // Reset form
       setSelectedBill(null);
       setPaymentAmount("");
       setPaymentMethod("");
+
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Payment failed');
+    } finally {
+      setPaymentLoading(false);
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'paid': return 'text-green-600';
-      case 'overdue': return 'text-red-600';
-      default: return 'text-yellow-600';
+  const handleAddBill = async () => {
+    try {
+      setAddBillLoading(true);
+      setError("");
+
+      const response = await fetch('http://localhost:3000/bills', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          categoryId: newBill.categoryId,
+          amount: parseFloat(newBill.amount),
+          description: newBill.description,
+          dueDate: newBill.dueDate,
+          autoPay: newBill.autoPay
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create bill');
+      }
+
+      // Refresh bills after successful creation
+      await fetchBills();
+      
+      // Reset form and close modal
+      setNewBill({
+        categoryId: '',
+        amount: '',
+        description: '',
+        dueDate: '',
+        autoPay: false
+      });
+      setShowAddBillModal(false);
+
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create bill');
+    } finally {
+      setAddBillLoading(false);
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'paid': return CheckCircle;
-      case 'overdue': return AlertCircle;
-      default: return Clock;
-    }
+  const resetAddBillForm = () => {
+    setNewBill({
+      categoryId: '',
+      amount: '',
+      description: '',
+      dueDate: '',
+      autoPay: false
+    });
   };
+
+  const getStatusColor = (status: string, dueDate: string) => {
+    if (status === 'PAID') return 'text-green-600';
+    if (status === 'PENDING' && new Date(dueDate) < new Date()) return 'text-red-600';
+    return 'text-yellow-600';
+  };
+
+  const getStatusIcon = (status: string, dueDate: string) => {
+    if (status === 'PAID') return CheckCircle;
+    if (status === 'PENDING' && new Date(dueDate) < new Date()) return AlertCircle;
+    return Clock;
+  };
+
+  const getStatusText = (status: string, dueDate: string) => {
+    if (status === 'PAID') return 'paid';
+    if (status === 'PENDING' && new Date(dueDate) < new Date()) return 'overdue';
+    return 'pending';
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <Skeleton className="h-8 w-32 mb-2" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+          <Skeleton className="h-10 w-24" />
+        </div>
+
+        {/* Summary Cards */}
+        <div className="grid gap-4 md:grid-cols-3">
+          <SummaryCardSkeleton />
+          <SummaryCardSkeleton />
+          <SummaryCardSkeleton />
+        </div>
+
+        {/* Bills List */}
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-20" />
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {[1, 2, 3, 4].map((i) => (
+                  <BillCardSkeleton key={i} />
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-32" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-8">
+                <Skeleton className="h-12 w-12 mx-auto mb-4" />
+                <Skeleton className="h-4 w-48 mx-auto" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  const overdueBills = bills.filter(bill => 
+    bill.billStatus === 'PENDING' && new Date(bill.dueDate) < new Date()
+  );
 
   return (
     <div className="space-y-6">
@@ -144,90 +364,229 @@ export function PayBillsPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold">Pay Bills</h2>
-          <p className="text-muted-foreground">Manage and pay your bills securely via Paystack & Interswitch</p>
+          <p className="text-muted-foreground">Manage and pay your bills securely</p>
         </div>
-        <Button>
-          <Building className="h-4 w-4 mr-2" />
-          Add Bill
-        </Button>
+        <Dialog open={showAddBillModal} onOpenChange={setShowAddBillModal}>
+          <DialogTrigger asChild>
+            <Button>
+              <Building className="h-4 w-4 mr-2" />
+              Add Bill
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Plus className="h-5 w-5" />
+                Create New Bill
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="category">Category</Label>
+                  <Select 
+                    value={newBill.categoryId} 
+                    onValueChange={(value) => setNewBill({...newBill, categoryId: value})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((category) => {
+                        const IconComponent = getIconForCategory(category.name, category.icon);
+                        return (
+                          <SelectItem key={category.id} value={category.id}>
+                            <div className="flex items-center gap-2">
+                              <IconComponent className="h-4 w-4" />
+                              {category.name}
+                              {category.budgetLimit && (
+                                <span className="text-xs text-muted-foreground">
+                                  (₦{(category.budgetLimit / 100).toLocaleString('en-NG')} budget)
+                                </span>
+                              )}
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="amount">Amount (₦)</Label>
+                  <Input
+                    id="amount"
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={newBill.amount}
+                    onChange={(e) => setNewBill({...newBill, amount: e.target.value})}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="description">Bill Description</Label>
+                <Textarea
+                  id="description"
+                  placeholder="e.g., EKEDC Electric Bill, MTN Internet Service"
+                  value={newBill.description}
+                  onChange={(e) => setNewBill({...newBill, description: e.target.value})}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="dueDate">Due Date</Label>
+                <Input
+                  id="dueDate"
+                  type="date"
+                  value={newBill.dueDate}
+                  onChange={(e) => setNewBill({...newBill, dueDate: e.target.value})}
+                  min={new Date().toISOString().split('T')[0]}
+                />
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="autoPay"
+                  checked={newBill.autoPay}
+                  onCheckedChange={(checked) => setNewBill({...newBill, autoPay: !!checked})}
+                />
+                <Label htmlFor="autoPay" className="text-sm font-normal">
+                  Enable Auto-Pay (automatically pay when due)
+                </Label>
+              </div>
+
+              {/* Budget Warning */}
+              {newBill.categoryId && newBill.amount && (
+                (() => {
+                  const category = categories.find(c => c.id === newBill.categoryId);
+                  const billAmount = parseFloat(newBill.amount) * 100; // Convert to kobo
+                  const currentSpent = category?.spent || 0;
+                  const budgetLimit = category?.budgetLimit || 0;
+                  const newTotal = currentSpent + billAmount;
+                  
+                  if (budgetLimit > 0 && newTotal > budgetLimit) {
+                    return (
+                      <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>
+                          This bill will exceed your budget limit by ₦{((newTotal - budgetLimit) / 100).toLocaleString('en-NG')}
+                        </AlertDescription>
+                      </Alert>
+                    );
+                  }
+                  
+                  if (budgetLimit > 0 && newTotal > budgetLimit * 0.8) {
+                    return (
+                      <Alert>
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>
+                          This bill will use {Math.round((newTotal / budgetLimit) * 100)}% of your budget for {category?.name}
+                        </AlertDescription>
+                      </Alert>
+                    );
+                  }
+                  
+                  return null;
+                })()
+              )}
+            </div>
+            
+            <div className="flex justify-end space-x-2">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setShowAddBillModal(false);
+                  resetAddBillForm();
+                }}
+                disabled={addBillLoading}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleAddBill}
+                disabled={
+                  addBillLoading || 
+                  !newBill.categoryId || 
+                  !newBill.amount || 
+                  !newBill.description || 
+                  !newBill.dueDate
+                }
+              >
+                {addBillLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Bill
+                  </>
+                )}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
+
+      {/* Error Alert */}
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
       {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Bills</CardTitle>
-            <Clock className="h-4 w-4 text-yellow-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₦{totalPending.toLocaleString('en-NG')}</div>
-            <p className="text-xs text-muted-foreground">{pendingBills.length} bills due</p>
-          </CardContent>
-        </Card>
+      {summary && (
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Pending Bills</CardTitle>
+              <Clock className="h-4 w-4 text-yellow-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">₦{(summary.pending.total / 100).toLocaleString('en-NG')}</div>
+              <p className="text-xs text-muted-foreground">{summary.pending.count} bills due</p>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Overdue Bills</CardTitle>
-            <AlertCircle className="h-4 w-4 text-red-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">₦{totalOverdue.toLocaleString('en-NG')}</div>
-            <p className="text-xs text-muted-foreground">{overdueBills.length} bills overdue</p>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Overdue Bills</CardTitle>
+              <AlertCircle className="h-4 w-4 text-red-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-red-600">₦{(summary.overdue.total / 100).toLocaleString('en-NG')}</div>
+              <p className="text-xs text-muted-foreground">{summary.overdue.count} bills overdue</p>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Auto-Pay Enabled</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {mockBills.filter(bill => bill.autoPayEnabled).length}
-            </div>
-            <p className="text-xs text-muted-foreground">out of {mockBills.length} bills</p>
-          </CardContent>
-        </Card>
-      </div>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Auto-Pay Enabled</CardTitle>
+              <CheckCircle className="h-4 w-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{summary.autoPayEnabled}</div>
+              <p className="text-xs text-muted-foreground">out of {bills.length} bills</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Overdue Alert */}
       {overdueBills.length > 0 && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            You have {overdueBills.length} overdue bills totaling ₦{totalOverdue.toLocaleString('en-NG')}. 
+            You have {overdueBills.length} overdue bills totaling ₦{(overdueBills.reduce((sum, bill) => sum + bill.amount, 0) / 100).toLocaleString('en-NG')}. 
             Pay them now to avoid late fees.
           </AlertDescription>
         </Alert>
       )}
-
-      {/* Budget Status */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Budget Status</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {Object.entries(budgetAllocations).map(([category, budget]) => (
-              <div key={category} className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="font-medium">{category}</span>
-                  <span className="text-sm text-muted-foreground">
-                    ₦{budget.spent.toLocaleString('en-NG')} / ₦{budget.allocated.toLocaleString('en-NG')}
-                  </span>
-                </div>
-                <Progress 
-                  value={(budget.spent / budget.allocated) * 100} 
-                  className="w-full"
-                />
-                <div className="text-sm text-muted-foreground">
-                  ₦{budget.remaining.toLocaleString('en-NG')} remaining
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Bills List */}
       <div className="grid gap-4 lg:grid-cols-2">
@@ -236,46 +595,54 @@ export function PayBillsPage() {
             <CardTitle>All Bills</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {mockBills.map((bill) => {
-                const IconComponent = bill.icon;
-                const StatusIcon = getStatusIcon(bill.status);
-                
-                return (
-                  <div key={bill.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <div className="p-2 bg-muted rounded-lg">
-                        <IconComponent className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <p className="font-medium">{bill.name}</p>
-                        <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                          <span>Due: {new Date(bill.dueDate).toLocaleDateString()}</span>
-                          <Badge variant="secondary">{bill.category}</Badge>
-                          {bill.autoPayEnabled && (
-                            <Badge variant="outline">Auto-Pay</Badge>
-                          )}
+            {bills.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Building className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No bills found. Create your first bill to get started.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {bills.map((bill) => {
+                  const IconComponent = getIconForCategory(bill.category.name, bill.category.icon);
+                  const StatusIcon = getStatusIcon(bill.billStatus, bill.dueDate);
+                  const statusText = getStatusText(bill.billStatus, bill.dueDate);
+                  
+                  return (
+                    <div key={bill.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <div className="p-2 bg-muted rounded-lg">
+                          <IconComponent className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <p className="font-medium">{bill.description}</p>
+                          <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                            <span>Due: {new Date(bill.dueDate).toLocaleDateString()}</span>
+                            <Badge variant="secondary">{bill.category.name}</Badge>
+                            {bill.autoPay && (
+                              <Badge variant="outline">Auto-Pay</Badge>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <div className="text-right">
-                        <p className="font-bold">₦{bill.amount.toLocaleString('en-NG')}</p>
-                        <div className={`flex items-center space-x-1 text-sm ${getStatusColor(bill.status)}`}>
-                          <StatusIcon className="h-3 w-3" />
-                          <span className="capitalize">{bill.status}</span>
+                      <div className="flex items-center space-x-3">
+                        <div className="text-right">
+                          <p className="font-bold">₦{(bill.amount / 100).toLocaleString('en-NG')}</p>
+                          <div className={`flex items-center space-x-1 text-sm ${getStatusColor(bill.billStatus, bill.dueDate)}`}>
+                            <StatusIcon className="h-3 w-3" />
+                            <span className="capitalize">{statusText}</span>
+                          </div>
                         </div>
+                        {bill.billStatus !== 'PAID' && (
+                          <Button size="sm" onClick={() => handlePayBill(bill)}>
+                            Pay Now
+                          </Button>
+                        )}
                       </div>
-                      {bill.status !== 'paid' && (
-                        <Button size="sm" onClick={() => handlePayBill(bill)}>
-                          Pay Now
-                        </Button>
-                      )}
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -283,7 +650,7 @@ export function PayBillsPage() {
         <Card>
           <CardHeader>
             <CardTitle>
-              {selectedBill ? `Pay ${selectedBill.name}` : 'Select a Bill to Pay'}
+              {selectedBill ? `Pay ${selectedBill.description}` : 'Select a Bill to Pay'}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -297,16 +664,18 @@ export function PayBillsPage() {
                     value={paymentAmount}
                     onChange={(e) => setPaymentAmount(e.target.value)}
                     step="0.01"
+                    disabled={paymentLoading}
                   />
                 </div>
 
                 <div>
                   <Label htmlFor="payment-method">Payment Method</Label>
-                  <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                  <Select value={paymentMethod} onValueChange={setPaymentMethod} disabled={paymentLoading}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select payment method" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="wallet">Wallet Balance</SelectItem>
                       <SelectItem value="savings">GTB Savings Account (****1234)</SelectItem>
                       <SelectItem value="current">First Bank Current Account (****5678)</SelectItem>
                       <SelectItem value="credit">Access Bank Credit Card (****9012)</SelectItem>
@@ -319,7 +688,7 @@ export function PayBillsPage() {
                   <div className="space-y-1 text-sm">
                     <div className="flex justify-between">
                       <span>Bill:</span>
-                      <span>{selectedBill.name}</span>
+                      <span>{selectedBill.description}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Amount:</span>
@@ -330,22 +699,38 @@ export function PayBillsPage() {
                       <span>{new Date(selectedBill.dueDate).toLocaleDateString()}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Budget Category:</span>
-                      <span>{selectedBill.budgetCategory}</span>
+                      <span>Category:</span>
+                      <span>{selectedBill.category.name}</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-3">
                   <div className="text-xs text-muted-foreground bg-blue-50 p-2 rounded">
-                    🔒 Payments are processed securely through Paystack or Interswitch payment gateways
+                    🔒 Payments are processed securely through your wallet balance
                   </div>
                   <div className="flex space-x-2">
-                    <Button onClick={processPayment} disabled={!paymentMethod || !paymentAmount}>
-                      <CreditCard className="h-4 w-4 mr-2" />
-                      Process Payment
+                    <Button 
+                      onClick={processPayment} 
+                      disabled={!paymentMethod || !paymentAmount || paymentLoading}
+                    >
+                      {paymentLoading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard className="h-4 w-4 mr-2" />
+                          Process Payment
+                        </>
+                      )}
                     </Button>
-                    <Button variant="outline" onClick={() => setSelectedBill(null)}>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setSelectedBill(null)}
+                      disabled={paymentLoading}
+                    >
                       Cancel
                     </Button>
                   </div>

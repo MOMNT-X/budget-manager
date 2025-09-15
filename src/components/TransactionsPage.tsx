@@ -1,21 +1,75 @@
-import { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
-import { Search, Filter, Download, Plus, Calendar, ArrowUpDown } from "lucide-react";
-import { mockTransactions } from "../data/mockData";
+import { Search, Filter, Download, Plus, Calendar, ArrowUpDown, Loader2 } from "lucide-react";
+import { getTransactions } from "../Config/api";
+
+// Skeleton components
+const CardSkeleton = () => (
+  <Card>
+    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
+    </CardHeader>
+    <CardContent>
+      <div className="h-8 w-32 bg-gray-200 rounded animate-pulse mb-2" />
+      <div className="h-3 w-16 bg-gray-200 rounded animate-pulse" />
+    </CardContent>
+  </Card>
+);
+
+const TableRowSkeleton = () => (
+  <TableRow>
+    <TableCell><div className="h-4 w-20 bg-gray-200 rounded animate-pulse" /></TableCell>
+    <TableCell><div className="h-4 w-32 bg-gray-200 rounded animate-pulse" /></TableCell>
+    <TableCell><div className="h-6 w-24 bg-gray-200 rounded animate-pulse" /></TableCell>
+    <TableCell><div className="h-6 w-16 bg-gray-200 rounded animate-pulse" /></TableCell>
+    <TableCell><div className="h-4 w-20 bg-gray-200 rounded animate-pulse ml-auto" /></TableCell>
+  </TableRow>
+);
 
 export function TransactionsPage() {
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [filterCategory, setFilterCategory] = useState("all");
   const [sortBy, setSortBy] = useState("date");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [sortOrder, setSortOrder] = useState("desc");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 50;
 
-  const filteredTransactions = mockTransactions
+  // Fetch transactions with filters
+  const fetchTransactions = useCallback(async () => {
+    try {
+      setLoading(true);
+      const filters = {};
+      
+      if (filterType !== "all") {
+        filters.type = filterType;
+      }
+      
+      const data = await getTransactions(filters);
+      setTransactions(data);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching transactions:', err);
+      setError("Failed to load transactions");
+    } finally {
+      setLoading(false);
+    }
+  }, [filterType]);
+
+  useEffect(() => {
+    fetchTransactions();
+  }, [fetchTransactions]);
+
+  // Filter and sort transactions
+  const filteredTransactions = transactions
     .filter(transaction => {
       const matchesSearch = transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            transaction.category.toLowerCase().includes(searchTerm.toLowerCase());
@@ -25,12 +79,17 @@ export function TransactionsPage() {
       return matchesSearch && matchesType && matchesCategory;
     })
     .sort((a, b) => {
-      let aValue: any = a[sortBy as keyof typeof a];
-      let bValue: any = b[sortBy as keyof typeof b];
+      let aValue = a[sortBy];
+      let bValue = b[sortBy];
       
       if (sortBy === "date") {
         aValue = new Date(aValue);
         bValue = new Date(bValue);
+      }
+      
+      if (sortBy === "amount") {
+        aValue = parseFloat(aValue);
+        bValue = parseFloat(bValue);
       }
       
       if (sortOrder === "asc") {
@@ -40,11 +99,26 @@ export function TransactionsPage() {
       }
     });
 
-  const categories = [...new Set(mockTransactions.map(t => t.category))];
-  const totalIncome = mockTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
-  const totalExpenses = mockTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+  // Calculate totals
+  const totalIncome = transactions
+    .filter(t => t.type === 'deposit' || t.originalType === 'DEPOSIT')
+    .reduce((sum, t) => sum + t.amount, 0);
+    
+  const totalExpenses = transactions
+    .filter(t => t.type === 'expense' || t.originalType === 'EXPENSE')
+    .reduce((sum, t) => sum + t.amount, 0);
 
-  const handleSort = (field: string) => {
+  // Get unique categories
+  const categories = [...new Set(transactions.map(t => t.category))];
+
+  // Pagination
+  const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
+  const paginatedTransactions = filteredTransactions.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const handleSort = (field) => {
     if (sortBy === field) {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
     } else {
@@ -52,6 +126,35 @@ export function TransactionsPage() {
       setSortOrder("desc");
     }
   };
+
+  const getTransactionTypeLabel = (transaction) => {
+    if (transaction.originalType === 'DEPOSIT') return 'Income';
+    if (transaction.originalType === 'EXPENSE') return 'Expense';
+    return transaction.type;
+  };
+
+  const getTransactionColor = (transaction) => {
+    if (transaction.originalType === 'DEPOSIT') return 'text-green-600';
+    if (transaction.originalType === 'EXPENSE') return 'text-red-600';
+    return 'text-gray-600';
+  };
+
+  const getTransactionPrefix = (transaction) => {
+    if (transaction.originalType === 'DEPOSIT') return '+';
+    if (transaction.originalType === 'EXPENSE') return '-';
+    return '';
+  };
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <p className="text-red-500 mb-4">{error}</p>
+          <Button onClick={fetchTransactions}>Retry</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -62,7 +165,7 @@ export function TransactionsPage() {
           <p className="text-muted-foreground">Complete history of all your financial transactions</p>
         </div>
         <div className="flex items-center space-x-2">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" disabled={loading}>
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
@@ -75,37 +178,51 @@ export function TransactionsPage() {
 
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Income</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">+₦{totalIncome.toLocaleString('en-NG')}</div>
-            <p className="text-xs text-muted-foreground">All time</p>
-          </CardContent>
-        </Card>
+        {loading ? (
+          <>
+            <CardSkeleton />
+            <CardSkeleton />
+            <CardSkeleton />
+          </>
+        ) : (
+          <>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Income</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">
+                  +₦{totalIncome.toLocaleString('en-NG', { maximumFractionDigits: 2 })}
+                </div>
+                <p className="text-xs text-muted-foreground">All time</p>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">-₦{totalExpenses.toLocaleString('en-NG')}</div>
-            <p className="text-xs text-muted-foreground">All time</p>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-red-600">
+                  -₦{totalExpenses.toLocaleString('en-NG', { maximumFractionDigits: 2 })}
+                </div>
+                <p className="text-xs text-muted-foreground">All time</p>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Net Balance</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${totalIncome - totalExpenses >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {totalIncome - totalExpenses >= 0 ? '+' : ''}₦{Math.abs(totalIncome - totalExpenses).toLocaleString('en-NG')}
-            </div>
-            <p className="text-xs text-muted-foreground">All time</p>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Net Balance</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className={`text-2xl font-bold ${totalIncome - totalExpenses >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {totalIncome - totalExpenses >= 0 ? '+' : ''}₦{Math.abs(totalIncome - totalExpenses).toLocaleString('en-NG', { maximumFractionDigits: 2 })}
+                </div>
+                <p className="text-xs text-muted-foreground">All time</p>
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
 
       {/* Filters */}
@@ -123,20 +240,21 @@ export function TransactionsPage() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
+                  disabled={loading}
                 />
               </div>
             </div>
-            <Select value={filterType} onValueChange={setFilterType}>
+            <Select value={filterType} onValueChange={setFilterType} disabled={loading}>
               <SelectTrigger className="w-40">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="income">Income</SelectItem>
+                <SelectItem value="deposit">Income</SelectItem>
                 <SelectItem value="expense">Expenses</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={filterCategory} onValueChange={setFilterCategory}>
+            <Select value={filterCategory} onValueChange={setFilterCategory} disabled={loading}>
               <SelectTrigger className="w-40">
                 <SelectValue />
               </SelectTrigger>
@@ -147,6 +265,12 @@ export function TransactionsPage() {
                 ))}
               </SelectContent>
             </Select>
+            {loading && (
+              <div className="flex items-center space-x-2 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-sm">Loading...</span>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -154,28 +278,31 @@ export function TransactionsPage() {
       {/* Transactions Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Transaction History ({filteredTransactions.length} transactions)</CardTitle>
+          <CardTitle>
+            Transaction History ({loading ? '...' : filteredTransactions.length} transactions)
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>
-                  <Button variant="ghost" size="sm" onClick={() => handleSort('date')}>
+                  <Button variant="ghost" size="sm" onClick={() => handleSort('date')} disabled={loading}>
                     Date
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                   </Button>
                 </TableHead>
                 <TableHead>
-                  <Button variant="ghost" size="sm" onClick={() => handleSort('description')}>
+                  <Button variant="ghost" size="sm" onClick={() => handleSort('description')} disabled={loading}>
                     Description
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                   </Button>
                 </TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead>Type</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead className="text-right">
-                  <Button variant="ghost" size="sm" onClick={() => handleSort('amount')}>
+                  <Button variant="ghost" size="sm" onClick={() => handleSort('amount')} disabled={loading}>
                     Amount
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                   </Button>
@@ -183,39 +310,85 @@ export function TransactionsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredTransactions.slice(0, 50).map((transaction) => (
-                <TableRow key={transaction.id}>
-                  <TableCell>
-                    {new Date(transaction.date).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    {transaction.description}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">{transaction.category}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={transaction.type === 'income' ? 'default' : 'destructive'}>
-                      {transaction.type}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <span className={`font-medium ${
-                      transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      {transaction.type === 'income' ? '+' : '-'}₦
-                      {Math.abs(transaction.amount).toLocaleString('en-NG')}
-                    </span>
+              {loading ? (
+                // Show skeleton rows while loading
+                Array.from({ length: 5 }).map((_, index) => (
+                  <TableRowSkeleton key={index} />
+                ))
+              ) : paginatedTransactions.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8">
+                    No transactions found
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                paginatedTransactions.map((transaction) => (
+                  <TableRow key={transaction.id}>
+                    <TableCell>
+                      {new Date(transaction.timestamp).toLocaleDateString('en-NG', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                      })}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {transaction.description}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{transaction.category}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={transaction.originalType === 'DEPOSIT' ? 'success' :
+                        transaction.originalType === 'EXPENSE' ? 'default' : 'destructive'}>
+                        {getTransactionTypeLabel(transaction)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge 
+                        variant={transaction.status === 'success' ? 'success' : 
+                                transaction.status === 'pending' ? 'warning' : 'destructive'}
+                      >
+                        {transaction.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <span className={`font-medium ${getTransactionColor(transaction)}`}>
+                        {getTransactionPrefix(transaction)}₦{(transaction.amount/100).toLocaleString('en-NG', { maximumFractionDigits: 2 })}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
-          {filteredTransactions.length > 50 && (
-            <div className="mt-4 text-center">
-              <Button variant="outline">
-                Load More Transactions
-              </Button>
+          
+          {/* Pagination */}
+          {!loading && totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4">
+              <p className="text-sm text-muted-foreground">
+                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredTransactions.length)} of {filteredTransactions.length} transactions
+              </p>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </Button>
+                <span className="text-sm">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>
