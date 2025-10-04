@@ -10,7 +10,7 @@ export default function App() {
     <Router>
       <Routes>
         {/* Default Route */}
-        <Route path="/" element={<Navigate to="/layout" replace />} />
+        <Route path="/" element={<Navigate to="/login" replace />} />
 
         {/* Public Routes */}
         <Route path="/signup" element={<SignupPage />} />
