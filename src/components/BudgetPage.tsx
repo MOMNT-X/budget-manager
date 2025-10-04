@@ -123,8 +123,8 @@ const fetchData = async () => {
     setError("");
 
     // Fetch budgets
-     
-    const budgetsResponse = await fetch(`${api}/budgets`, {
+    const userId = localStorage.getItem('userId');
+    const budgetsResponse = await fetch(`${api}/budgets/user/${userId}`, {
       headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` },
     });
     if (!budgetsResponse.ok) throw new Error('Failed to fetch budgets');
