@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Calendar, Filter, TrendingDown, TrendingUp, DollarSign, Coins, TrendingUpDown } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { CandlestickChart } from "./CandlestickChart";
-import { getExpensesSummary } from "../Config/api";
+import { getExpensesSummary } from "../config/api";
 
 // Skeleton components
 const CardSkeleton = () => (

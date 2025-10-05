@@ -7,7 +7,7 @@ import { Label } from "./ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
-import { confirm } from "../Config/api";
+import { confirm } from "../config/api";
 import { Skeleton } from "./ui/skeleton";
 import { 
   Wallet, 

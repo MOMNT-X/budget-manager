@@ -9,10 +9,14 @@ import { TransactionsPage } from "../components/TransactionsPage";
 import { PayBillsPage } from "../components/PayBillsPage";
 import { WalletPage } from "../components/WalletPage";
 import { BudgetPage } from "../components/BudgetPage";
+import { BeneficiariesPage } from "../components/BeneficiariesPage";
+import { FinancialGoalsPage } from "../components/FinancialGoalsPage";
+import { RecurringExpensesPage } from "../components/RecurringExpensesPage";
+import { InsightsPage } from "../components/InsightsPage";
 import { AppProvider, useApp } from "../contexts/AppContext";
 import { mockTransactions, mockCategoryData } from "../data/mockData";
 
-export type PageType = 'dashboard' | 'expenses' | 'transactions' | 'pay-bills' | 'wallet' | 'budget';
+export type PageType = 'dashboard' | 'expenses' | 'transactions' | 'pay-bills' | 'wallet' | 'budget' | 'beneficiaries' | 'financial-goals' | 'recurring-expenses' | 'insights';
 
 function LayoutContent() {
   const [currentPage, setCurrentPage] = useState<PageType>('dashboard');
@@ -44,6 +48,14 @@ function LayoutContent() {
         return <WalletPage />;
       case 'budget':
         return <BudgetPage />;
+      case 'beneficiaries':
+        return <BeneficiariesPage />;
+      case 'financial-goals':
+        return <FinancialGoalsPage />;
+      case 'recurring-expenses':
+        return <RecurringExpensesPage />;
+      case 'insights':
+        return <InsightsPage />;
       default:
         return <div className="text-center text-muted-foreground">Page not found</div>;
     }
