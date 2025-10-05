@@ -4,7 +4,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { AlertCircle, Building2, Loader2, Plus, Trash2, UserPlus, CheckCircle } from "lucide-react";
+import { CircleAlert as AlertCircle, Building2, Loader as Loader2, Plus, Trash2, UserPlus, CircleCheck as CheckCircle } from "lucide-react";
 import { Alert, AlertDescription } from "./ui/alert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
 import { Skeleton } from "./ui/skeleton";
