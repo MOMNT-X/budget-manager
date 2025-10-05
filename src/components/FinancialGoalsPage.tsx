@@ -1,17 +1,19 @@
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { CircleAlert as AlertCircle, Target, Loader as Loader2, Plus, Trash2, TrendingUp, DollarSign, Calendar } from "lucide-react";
-import { Alert, AlertDescription } from "./ui/alert";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
-import { Progress } from "./ui/progress";
-import { Badge } from "./ui/badge";
-import { Skeleton } from "./ui/skeleton";
-import { getFinancialGoals, createFinancialGoal, contributeToGoal, deleteFinancialGoal, getCategories } from "../Config/api";
-import { toast } from "sonner";
+import React, { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlertCircle, Target, Loader2, Plus, Trash2, TrendingUp, DollarSign, Calendar, ChevronRight, Award, CheckCircle, PiggyBank, Clock, Search } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "@/components/ui/use-toast";
+import { useMediaQuery } from "@/hooks/use-media-query";
+import { format } from "date-fns";
 
 interface Goal {
   id: string;
@@ -24,15 +26,28 @@ interface Goal {
   category?: {
     id: string;
     name: string;
+    icon?: string;
   };
   progress?: number;
   createdAt: string;
+  recentContributions?: Contribution[];
+}
+
+interface Contribution {
+  id: string;
+  amount: number;
+  date: string;
 }
 
 interface Category {
   id: string;
   name: string;
   icon?: string;
+}
+
+interface GoalFilter {
+  status: 'ALL' | 'ACTIVE' | 'COMPLETED' | 'PAUSED' | 'CANCELLED';
+  sortBy: 'progress' | 'deadline' | 'amount' | 'recent';
 }
 
 const GoalCardSkeleton = () => (
@@ -65,6 +80,13 @@ export function FinancialGoalsPage() {
   const [contributeLoading, setContributeLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState<string>("all");
+  const [filters, setFilters] = useState<GoalFilter>({
+    status: 'ALL',
+    sortBy: 'progress'
+  });
+  const isMobile = useMediaQuery("(max-width: 768px)");
 
   const [newGoal, setNewGoal] = useState({
     name: '',
@@ -83,16 +105,47 @@ export function FinancialGoalsPage() {
     try {
       setLoading(true);
       setError("");
-      const [goalsData, categoriesData] = await Promise.all([
-        getFinancialGoals(),
-        getCategories()
-      ]);
-      setGoals(goalsData);
-      setCategories(categoriesData);
+      
+      // Fetch data from API
+      const response = await fetch('http://localhost:3000/financial-goals', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch financial goals');
+      }
+      
+      const goalsData = await response.json();
+      
+      // Calculate progress for each goal
+      const goalsWithProgress = goalsData.map((goal: Goal) => ({
+        ...goal,
+        progress: Math.min(Math.round((goal.currentAmount / goal.targetAmount) * 100), 100)
+      }));
+      
+      setGoals(goalsWithProgress);
+      
+      // Fetch categories
+      const categoriesResponse = await fetch('http://localhost:3000/categories', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        },
+      });
+      
+      if (categoriesResponse.ok) {
+        const categoriesData = await categoriesResponse.json();
+        setCategories(categoriesData);
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load financial goals';
       setError(errorMessage);
-      toast.error(errorMessage);
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -100,7 +153,11 @@ export function FinancialGoalsPage() {
 
   const handleAddGoal = async () => {
     if (!newGoal.name || !newGoal.targetAmount) {
-      toast.error("Please fill in all required fields");
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -108,14 +165,29 @@ export function FinancialGoalsPage() {
       setAddLoading(true);
       setError("");
 
-      await createFinancialGoal({
-        name: newGoal.name,
-        targetAmount: parseFloat(newGoal.targetAmount),
-        deadline: newGoal.deadline || undefined,
-        categoryId: newGoal.categoryId || undefined
+      const response = await fetch('http://localhost:3000/financial-goals', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: newGoal.name,
+          targetAmount: parseFloat(newGoal.targetAmount),
+          deadline: newGoal.deadline || undefined,
+          categoryId: newGoal.categoryId || undefined
+        }),
       });
 
-      toast.success("Financial goal created successfully");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create goal');
+      }
+
+      toast({
+        title: "Success",
+        description: "Financial goal created successfully",
+      });
       await fetchData();
 
       setNewGoal({
@@ -128,7 +200,11 @@ export function FinancialGoalsPage() {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create goal';
       setError(errorMessage);
-      toast.error(errorMessage);
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
     } finally {
       setAddLoading(false);
     }
@@ -136,7 +212,11 @@ export function FinancialGoalsPage() {
 
   const handleContribute = async () => {
     if (!selectedGoal || !contributionAmount) {
-      toast.error("Please enter a valid amount");
+      toast({
+        title: "Error",
+        description: "Please enter a valid amount",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -144,9 +224,26 @@ export function FinancialGoalsPage() {
       setContributeLoading(true);
       setError("");
 
-      await contributeToGoal(selectedGoal.id, parseFloat(contributionAmount));
+      const response = await fetch(`http://localhost:3000/financial-goals/${selectedGoal.id}/contribute`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: parseFloat(contributionAmount)
+        }),
+      });
 
-      toast.success(`Successfully contributed ₦${parseFloat(contributionAmount).toLocaleString('en-NG')} to ${selectedGoal.name}`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to contribute to goal');
+      }
+
+      toast({
+        title: "Success",
+        description: `Successfully contributed ₦${parseFloat(contributionAmount).toLocaleString('en-NG')} to ${selectedGoal.name}`,
+      });
       await fetchData();
 
       setContributionAmount('');
@@ -155,27 +252,46 @@ export function FinancialGoalsPage() {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to contribute to goal';
       setError(errorMessage);
-      toast.error(errorMessage);
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
     } finally {
       setContributeLoading(false);
     }
   };
 
   const handleDeleteGoal = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this goal?")) {
-      return;
-    }
-
     try {
       setDeleteLoading(id);
       setError("");
-      await deleteFinancialGoal(id);
-      toast.success("Goal deleted successfully");
+      
+      const response = await fetch(`http://localhost:3000/financial-goals/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete goal');
+      }
+      
+      toast({
+        title: "Success",
+        description: "Goal deleted successfully",
+      });
       await fetchData();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete goal';
       setError(errorMessage);
-      toast.error(errorMessage);
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
     } finally {
       setDeleteLoading(null);
     }
@@ -192,12 +308,404 @@ export function FinancialGoalsPage() {
   };
 
   const getStatusColor = (status: string) => {
-    const colors = {
-      ACTIVE: 'bg-blue-100 text-blue-800',
-      COMPLETED: 'bg-green-100 text-green-800',
-      PAUSED: 'bg-yellow-100 text-yellow-800',
-      CANCELLED: 'bg-red-100 text-red-800'
-    };
+    switch (status) {
+      case 'ACTIVE':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'COMPLETED':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'PAUSED':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'CANCELLED':
+        return 'bg-red-100 text-red-800 border-red-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'ACTIVE':
+        return <Target className="h-4 w-4" />;
+      case 'COMPLETED':
+        return <CheckCircle className="h-4 w-4" />;
+      case 'PAUSED':
+        return <Clock className="h-4 w-4" />;
+      case 'CANCELLED':
+        return <AlertCircle className="h-4 w-4" />;
+      default:
+        return <Target className="h-4 w-4" />;
+    }
+  };
+
+  const getProgressColor = (progress: number) => {
+    if (progress >= 100) return "bg-green-500";
+    if (progress >= 75) return "bg-blue-500";
+    if (progress >= 50) return "bg-yellow-500";
+    if (progress >= 25) return "bg-orange-500";
+    return "bg-red-500";
+  };
+
+  // Filter and sort goals
+  const filteredGoals = goals
+    .filter(goal => {
+      // Filter by search query
+      const matchesSearch = 
+        goal.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (goal.category?.name?.toLowerCase().includes(searchQuery.toLowerCase()));
+      
+      // Filter by status tab
+      const matchesStatus = 
+        activeTab === "all" || 
+        activeTab === goal.status.toLowerCase();
+      
+      return matchesSearch && matchesStatus;
+    })
+    .sort((a, b) => {
+      // Sort based on selected sort option
+      switch (filters.sortBy) {
+        case 'progress':
+          return (b.progress || 0) - (a.progress || 0);
+        case 'deadline':
+          if (!a.deadline) return 1;
+          if (!b.deadline) return -1;
+          return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+        case 'amount':
+          return b.targetAmount - a.targetAmount;
+        case 'recent':
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        default:
+          return 0;
+      }
+    });
+
+  return (
+    <div className="animate-fade-in">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">Financial Goals</h2>
+          <p className="text-muted-foreground">
+            Track and manage your savings goals
+          </p>
+        </div>
+        <div className="mt-4 md:mt-0">
+          <Button onClick={() => setShowAddModal(true)} className="flex items-center gap-2">
+            <Plus className="h-4 w-4" /> Create New Goal
+          </Button>
+        </div>
+      </div>
+
+      {error && (
+        <Alert variant="destructive" className="mb-6 animate-shake">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      <div className="mb-6 space-y-4">
+        <div className="relative">
+          <Input
+            placeholder="Search goals..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+        </div>
+
+        <div className="flex flex-col md:flex-row justify-between gap-4">
+          <Tabs 
+            value={activeTab} 
+            onValueChange={setActiveTab}
+            className="w-full md:w-auto"
+          >
+            <TabsList className="grid grid-cols-4 w-full md:w-auto">
+              <TabsTrigger value="all">All</TabsTrigger>
+              <TabsTrigger value="active">Active</TabsTrigger>
+              <TabsTrigger value="completed">Completed</TabsTrigger>
+              <TabsTrigger value="paused">Paused</TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          <Select 
+            value={filters.sortBy} 
+            onValueChange={(value) => setFilters({...filters, sortBy: value as any})}
+          >
+            <SelectTrigger className="w-full md:w-[180px]">
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="progress">Progress</SelectItem>
+              <SelectItem value="deadline">Deadline</SelectItem>
+              <SelectItem value="amount">Amount</SelectItem>
+              <SelectItem value="recent">Recently Added</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3].map((i) => (
+            <GoalCardSkeleton key={i} />
+          ))}
+        </div>
+      ) : (
+        <>
+          {filteredGoals.length === 0 ? (
+            <div className="text-center py-16 border rounded-lg">
+              <PiggyBank className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium">No goals found</h3>
+              <p className="text-muted-foreground mt-2">
+                {searchQuery ? "Try adjusting your search or filters" : "Create your first financial goal to get started"}
+              </p>
+              {!searchQuery && (
+                <Button 
+                  variant="outline" 
+                  className="mt-4"
+                  onClick={() => setShowAddModal(true)}
+                >
+                  <Plus className="h-4 w-4 mr-2" /> Create Goal
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredGoals.map((goal) => (
+                <Card key={goal.id} className="overflow-hidden hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-2">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <CardTitle className="text-lg">{goal.name}</CardTitle>
+                        <p className="text-sm text-muted-foreground">
+                          {goal.category?.name || "No category"}
+                        </p>
+                      </div>
+                      <Badge className={`${getStatusColor(goal.status)} flex items-center gap-1`}>
+                        {getStatusIcon(goal.status)}
+                        {goal.status}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pb-2">
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span>Progress</span>
+                          <span className="font-medium">{goal.progress}%</span>
+                        </div>
+                        <Progress 
+                          value={goal.progress} 
+                          className="h-2" 
+                          indicatorClassName={getProgressColor(goal.progress || 0)}
+                        />
+                      </div>
+                      
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Target</p>
+                          <p className="text-lg font-semibold">₦{goal.targetAmount.toLocaleString('en-NG')}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm text-muted-foreground">Current</p>
+                          <p className="text-lg font-semibold">₦{goal.currentAmount.toLocaleString('en-NG')}</p>
+                        </div>
+                      </div>
+                      
+                      {goal.deadline && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Calendar className="h-4 w-4" />
+                          <span>Deadline: {format(new Date(goal.deadline), 'MMM d, yyyy')}</span>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                  <CardFooter className="flex justify-between pt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedGoal(goal);
+                        setShowContributeModal(true);
+                      }}
+                      disabled={goal.status !== 'ACTIVE'}
+                    >
+                      <DollarSign className="h-4 w-4 mr-1" /> Contribute
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleDeleteGoal(goal.id)}
+                      disabled={deleteLoading === goal.id}
+                    >
+                      {deleteLoading === goal.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Add Goal Modal */}
+      <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Create New Financial Goal</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Goal Name</Label>
+              <Input
+                id="name"
+                placeholder="e.g., New Car, Emergency Fund"
+                value={newGoal.name}
+                onChange={(e) => setNewGoal({ ...newGoal, name: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="targetAmount">Target Amount (₦)</Label>
+              <Input
+                id="targetAmount"
+                type="number"
+                placeholder="0.00"
+                value={newGoal.targetAmount}
+                onChange={(e) => setNewGoal({ ...newGoal, targetAmount: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="deadline">Deadline (Optional)</Label>
+              <Input
+                id="deadline"
+                type="date"
+                value={newGoal.deadline}
+                onChange={(e) => setNewGoal({ ...newGoal, deadline: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="category">Category (Optional)</Label>
+              <Select
+                value={newGoal.categoryId}
+                onValueChange={(value) => setNewGoal({ ...newGoal, categoryId: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((category) => (
+                    <SelectItem key={category.id} value={category.id}>
+                      {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                resetForm();
+                setShowAddModal(false);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAddGoal}
+              disabled={addLoading}
+            >
+              {addLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Plus className="h-4 w-4 mr-2" />
+              )}
+              Create Goal
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Contribute Modal */}
+      <Dialog open={showContributeModal} onOpenChange={setShowContributeModal}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Contribute to Goal</DialogTitle>
+          </DialogHeader>
+          {selectedGoal && (
+            <div className="space-y-4 py-4">
+              <div className="flex flex-col space-y-1">
+                <p className="font-medium">{selectedGoal.name}</p>
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <span>Current: ₦{selectedGoal.currentAmount.toLocaleString('en-NG')}</span>
+                  <span>Target: ₦{selectedGoal.targetAmount.toLocaleString('en-NG')}</span>
+                </div>
+                <Progress 
+                  value={selectedGoal.progress} 
+                  className="h-2 mt-2" 
+                  indicatorClassName={getProgressColor(selectedGoal.progress || 0)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="contributionAmount">Contribution Amount (₦)</Label>
+                <Input
+                  id="contributionAmount"
+                  type="number"
+                  placeholder="0.00"
+                  value={contributionAmount}
+                  onChange={(e) => setContributionAmount(e.target.value)}
+                />
+              </div>
+
+              <Alert>
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4" />
+                  <AlertDescription>
+                    This will increase your progress by approximately{" "}
+                    {contributionAmount
+                      ? Math.round((parseFloat(contributionAmount) / selectedGoal.targetAmount) * 100)
+                      : 0}
+                    %.
+                  </AlertDescription>
+                </div>
+              </Alert>
+            </div>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setContributionAmount('');
+                setSelectedGoal(null);
+                setShowContributeModal(false);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleContribute}
+              disabled={contributeLoading || !contributionAmount}
+            >
+              {contributeLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <DollarSign className="h-4 w-4 mr-2" />
+              )}
+              Contribute
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
 

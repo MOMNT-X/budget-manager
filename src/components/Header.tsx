@@ -3,11 +3,11 @@
 import { Button } from "./ui/button";
 import { useState } from "react";
 import { NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuLink, NavigationMenuList, NavigationMenuTrigger } from "./ui/navigation-menu";
-import { Plus, Settings, Menu, Home, Receipt, CreditCard, Banknote, Building, Target, CoinsIcon, X, User, Sparkles } from "lucide-react";
+import { Plus, Settings, Menu, Home, Receipt, CreditCard, Banknote, Building, Target, CoinsIcon, X, User, Sparkles, Bell, TrendingUp } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 import { useNavigate } from "react-router-dom";
 
-export type PageType = 'dashboard' | 'expenses' | 'transactions' | 'pay-bills' | 'wallet' | 'budget' | 'profile';
+export type PageType = 'dashboard' | 'expenses' | 'transactions' | 'pay-bills' | 'wallet' | 'budget' | 'profile' | 'notifications' | 'spending-insights';
 
 interface HeaderProps {
   currentPage: PageType;
@@ -21,6 +21,8 @@ const navigationItems = [
   { id: 'pay-bills' as PageType, label: 'Bills', icon: Banknote, gradient: 'from-orange-500 to-yellow-500' },
   { id: 'wallet' as PageType, label: 'Wallet', icon: Building, gradient: 'from-purple-500 to-indigo-500' },
   { id: 'budget' as PageType, label: 'Budget', icon: Target, gradient: 'from-teal-500 to-green-500' },
+  { id: 'notifications' as PageType, label: 'Notifications', icon: Bell, gradient: 'from-amber-500 to-orange-500' },
+  { id: 'spending-insights' as PageType, label: 'Insights', icon: TrendingUp, gradient: 'from-violet-500 to-purple-500' },
 ];
 
 export function Header({ currentPage, onPageChange }: HeaderProps) {

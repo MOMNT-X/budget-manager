@@ -1,4 +1,3 @@
-'use client'
 import { useState } from "react";
 import { Dashboard } from "../components/Dashboard";
 import { RecentTransactions } from "../components/RecentTransactions";
@@ -9,10 +8,12 @@ import { TransactionsPage } from "../components/TransactionsPage";
 import { PayBillsPage } from "../components/PayBillsPage";
 import { WalletPage } from "../components/WalletPage";
 import { BudgetPage } from "../components/BudgetPage";
+import NotificationSystem from "../components/NotificationSystem";
+import SpendingInsightsPage from "../components/SpendingInsightsPage";
 import { AppProvider, useApp } from "../contexts/AppContext";
 import { mockTransactions, mockCategoryData } from "../data/mockData";
 
-export type PageType = 'dashboard' | 'expenses' | 'transactions' | 'pay-bills' | 'wallet' | 'budget';
+export type PageType = 'dashboard' | 'expenses' | 'transactions' | 'pay-bills' | 'wallet' | 'budget' | 'notifications' | 'spending-insights';
 
 function LayoutContent() {
   const [currentPage, setCurrentPage] = useState<PageType>('dashboard');
@@ -44,6 +45,10 @@ function LayoutContent() {
         return <WalletPage />;
       case 'budget':
         return <BudgetPage />;
+      case 'notifications':
+        return <NotificationSystem />;
+      case 'spending-insights':
+        return <SpendingInsightsPage />;
       default:
         return <div className="text-center text-muted-foreground">Page not found</div>;
     }

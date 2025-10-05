@@ -1,17 +1,23 @@
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Badge } from "./ui/badge";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { Progress } from "./ui/progress";
-import { AlertCircle, CheckCircle, Clock, CreditCard, Building, Zap, Car, Home, Phone, Wifi, Loader2, Plus, Calendar, X } from "lucide-react";
-import { Alert, AlertDescription } from "./ui/alert";
-import { Skeleton } from "./ui/skeleton";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
-import { Checkbox } from "./ui/checkbox";
-import { Textarea } from "./ui/textarea";
+import React, { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Progress } from "@/components/ui/progress";
+import { AlertCircle, CheckCircle, Clock, CreditCard, Building, Zap, Car, Home, Phone, Wifi, Loader2, Plus, Calendar, X, Bank, User, Search, ArrowRight } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "@/components/ui/use-toast";
+import { banks } from "@/data/banks";
+import { Avatar } from "@/components/ui/avatar";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useMediaQuery } from "@/hooks/use-media-query";
 
 interface Category {
   id: string;
@@ -26,7 +32,7 @@ interface Bill {
   description: string;
   amount: number;
   dueDate: string;
-  billStatus: 'PENDING' | 'PAID';
+  billStatus: 'PENDING' | 'PAID' | 'OVERDUE' | 'FAILED';
   autoPay: boolean;
   currency: string;
   category: {
@@ -34,6 +40,15 @@ interface Bill {
     name: string;
     icon: string;
   };
+}
+
+interface Beneficiary {
+  id: string;
+  name: string;
+  accountNumber: string;
+  bankCode: string;
+  bankName: string;
+  recipientCode?: string;
 }
 
 interface BillsSummary {
@@ -107,6 +122,8 @@ export function PayBillsPage() {
   const [loading, setLoading] = useState(true);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [error, setError] = useState("");
+  const [activeTab, setActiveTab] = useState("pay-bills");
+  const isMobile = useMediaQuery("(max-width: 768px)");
   
   // Add Bill Modal States
   const [showAddBillModal, setShowAddBillModal] = useState(false);
@@ -118,11 +135,47 @@ export function PayBillsPage() {
     dueDate: '',
     autoPay: false
   });
+  
+  // Bank Transfer States
+  const [bankTransfer, setBankTransfer] = useState({
+    accountNumber: "",
+    bankCode: "",
+    amount: "",
+    description: "",
+    saveBeneficiary: false,
+    beneficiaryName: ""
+  });
+  const [isBankTransferLoading, setIsBankTransferLoading] = useState(false);
+  const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
+  const [selectedBeneficiary, setSelectedBeneficiary] = useState<Beneficiary | null>(null);
+  const [bankSearchQuery, setBankSearchQuery] = useState("");
+  const [showBankList, setShowBankList] = useState(false);
+  const [accountVerified, setAccountVerified] = useState(false);
+  const [accountName, setAccountName] = useState("");
+  const [verifyingAccount, setVerifyingAccount] = useState(false);
 
   useEffect(() => {
     fetchBills();
     fetchCategories();
+    fetchBeneficiaries();
   }, []);
+
+  const fetchBeneficiaries = async () => {
+    try {
+      const response = await fetch('http://localhost:3000/beneficiaries', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        },
+      });
+
+      if (response.ok) {
+        const beneficiariesData = await response.json();
+        setBeneficiaries(beneficiariesData);
+      }
+    } catch (err) {
+      console.error('Failed to fetch beneficiaries:', err);
+    }
+  };
 
   const fetchCategories = async () => {
     try {
@@ -228,6 +281,127 @@ export function PayBillsPage() {
       setError(err instanceof Error ? err.message : 'Payment failed');
     } finally {
       setPaymentLoading(false);
+    }
+  };
+  
+  const verifyAccount = async () => {
+    if (!bankTransfer.accountNumber || !bankTransfer.bankCode) {
+      toast.error("Please enter account number and select a bank");
+      return;
+    }
+    
+    setVerifyingAccount(true);
+    setAccountVerified(false);
+    setAccountName("");
+    
+    try {
+      const response = await fetch(`http://localhost:3000/paystack/verify-account`, {
+        method: "POST",
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          account_number: bankTransfer.accountNumber,
+          bank_code: bankTransfer.bankCode
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to verify account");
+      }
+
+      const data = await response.json();
+      setAccountName(data.account_name);
+      setAccountVerified(true);
+      toast.success("Account verified successfully");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Account verification failed");
+      setAccountVerified(false);
+    } finally {
+      setVerifyingAccount(false);
+    }
+  };
+
+  const handleBankTransfer = async () => {
+    if (!bankTransfer.accountNumber || !bankTransfer.bankCode || !bankTransfer.amount) {
+      toast.error("Please fill all required fields");
+      return;
+    }
+    
+    if (!accountVerified && !selectedBeneficiary) {
+      toast.error("Please verify account before proceeding");
+      return;
+    }
+    
+    setIsBankTransferLoading(true);
+    try {
+      setError("");
+      
+      // If saving as beneficiary, create beneficiary first
+      if (bankTransfer.saveBeneficiary && bankTransfer.beneficiaryName && !selectedBeneficiary) {
+        await fetch("http://localhost:3000/beneficiaries", {
+          method: "POST",
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: bankTransfer.beneficiaryName || accountName,
+            accountNumber: bankTransfer.accountNumber,
+            bankCode: bankTransfer.bankCode
+          }),
+        });
+      }
+      
+      // Process the transfer
+      const response = await fetch(
+        `http://localhost:3000/wallet/transfer`,
+        {
+          method: "POST",
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            accountNumber: selectedBeneficiary ? selectedBeneficiary.accountNumber : bankTransfer.accountNumber,
+            bankCode: selectedBeneficiary ? selectedBeneficiary.bankCode : bankTransfer.bankCode,
+            amount: parseFloat(bankTransfer.amount) * 100, // Convert to kobo
+            description: bankTransfer.description || "Bank Transfer"
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Transfer failed");
+      }
+
+      toast.success("Transfer initiated successfully");
+
+      // Reset form
+      setBankTransfer({
+        accountNumber: "",
+        bankCode: "",
+        amount: "",
+        description: "",
+        saveBeneficiary: false,
+        beneficiaryName: "",
+      });
+      setSelectedBeneficiary(null);
+      setAccountVerified(false);
+      setAccountName("");
+      
+      // Refresh beneficiaries list if a new one was added
+      if (bankTransfer.saveBeneficiary) {
+        fetchBeneficiaries();
+      }
+      
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Transfer failed');
+      setError(err instanceof Error ? err.message : 'Transfer failed');
+    } finally {
+      setIsBankTransferLoading(false);
     }
   };
 
