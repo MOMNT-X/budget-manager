@@ -6,7 +6,7 @@ import { Alert, AlertDescription } from "./ui/alert";
 import { Badge } from "./ui/badge";
 import { Skeleton } from "./ui/skeleton";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { getSpendingInsights, getSpendingTrends, getBudgetPerformance, getRecommendations } from "../config/api";
+import { getSpendingInsights, getSpendingTrends, getBudgetPerformance, getRecommendations } from "../Config/api";
 import { toast } from "sonner";
 
 export function InsightsPage() {

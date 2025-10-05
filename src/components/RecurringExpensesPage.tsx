@@ -11,7 +11,7 @@ import { Badge } from "./ui/badge";
 import { Skeleton } from "./ui/skeleton";
 import { Textarea } from "./ui/textarea";
 import { Switch } from "./ui/switch";
-import { getRecurringExpenses, createRecurringExpense, updateRecurringExpense, deleteRecurringExpense, getCategories } from "../config/api";
+import { getRecurringExpenses, createRecurringExpense, updateRecurringExpense, deleteRecurringExpense, getCategories } from "../Config/api";
 import { toast } from "sonner";
 
 interface RecurringExpense {

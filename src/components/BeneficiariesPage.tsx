@@ -8,7 +8,7 @@ import { CircleAlert as AlertCircle, Building2, Loader as Loader2, Plus, Trash2,
 import { Alert, AlertDescription } from "./ui/alert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
 import { Skeleton } from "./ui/skeleton";
-import { getBeneficiaries, createBeneficiary, deleteBeneficiary, getBankList, resolveAccountNumber } from "../config/api";
+import { getBeneficiaries, createBeneficiary, deleteBeneficiary, getBankList, resolveAccountNumber } from "../Config/api";
 import { toast } from "sonner";
 
 interface Beneficiary {

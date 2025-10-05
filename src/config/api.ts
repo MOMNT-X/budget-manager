@@ -222,3 +222,207 @@ export const getDashboardCategories = async () => {
   if (!res.ok) throw new Error(data.message || "Failed to load categories");
   return data;
 };
+
+// ===== BENEFICIARIES =====
+export const getBeneficiaries = async () => {
+  const res = await fetch(`${BASE_URL}/beneficiaries`, {
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Failed to fetch beneficiaries");
+  return data;
+};
+
+export const createBeneficiary = async (payload: any) => {
+  const res = await fetch(`${BASE_URL}/beneficiaries`, {
+    method: "POST",
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Failed to create beneficiary");
+  return data;
+};
+
+export const deleteBeneficiary = async (id: string) => {
+  const res = await fetch(`${BASE_URL}/beneficiaries/${id}`, {
+    method: "DELETE",
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Failed to delete beneficiary");
+  return data;
+};
+
+// ===== FINANCIAL GOALS =====
+export const getFinancialGoals = async () => {
+  const res = await fetch(`${BASE_URL}/financial-goals`, {
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Failed to fetch financial goals");
+  return data;
+};
+
+export const createFinancialGoal = async (payload: any) => {
+  const res = await fetch(`${BASE_URL}/financial-goals`, {
+    method: "POST",
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Failed to create financial goal");
+  return data;
+};
+
+export const contributeToGoal = async (id: string, amount: number) => {
+  const res = await fetch(`${BASE_URL}/financial-goals/${id}/contribute`, {
+    method: "POST",
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({ amount }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Failed to contribute to goal");
+  return data;
+};
+
+export const deleteFinancialGoal = async (id: string) => {
+  const res = await fetch(`${BASE_URL}/financial-goals/${id}`, {
+    method: "DELETE",
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Failed to delete goal");
+  return data;
+};
+
+// ===== RECURRING EXPENSES =====
+export const getRecurringExpenses = async () => {
+  const res = await fetch(`${BASE_URL}/recurring-expenses`, {
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Failed to fetch recurring expenses");
+  return data;
+};
+
+export const createRecurringExpense = async (payload: any) => {
+  const res = await fetch(`${BASE_URL}/recurring-expenses`, {
+    method: "POST",
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Failed to create recurring expense");
+  return data;
+};
+
+export const updateRecurringExpense = async (id: string, payload: any) => {
+  const res = await fetch(`${BASE_URL}/recurring-expenses/${id}`, {
+    method: "PATCH",
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Failed to update recurring expense");
+  return data;
+};
+
+export const deleteRecurringExpense = async (id: string) => {
+  const res = await fetch(`${BASE_URL}/recurring-expenses/${id}`, {
+    method: "DELETE",
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Failed to delete recurring expense");
+  return data;
+};
+
+// ===== INSIGHTS & ANALYTICS =====
+export const getSpendingInsights = async (period: 'week' | 'month' | 'year' = 'month') => {
+  const res = await fetch(`${BASE_URL}/insights/spending?period=${period}`, {
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Failed to fetch spending insights");
+  return data;
+};
+
+export const getSpendingTrends = async (months: number = 6) => {
+  const res = await fetch(`${BASE_URL}/insights/trends?months=${months}`, {
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Failed to fetch spending trends");
+  return data;
+};
+
+export const getBudgetPerformance = async () => {
+  const res = await fetch(`${BASE_URL}/insights/budget-performance`, {
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Failed to fetch budget performance");
+  return data;
+};
+
+export const getRecommendations = async () => {
+  const res = await fetch(`${BASE_URL}/insights/recommendations`, {
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Failed to fetch recommendations");
+  return data;
+};
+
+// ===== BILLS (Enhanced) =====
+export const getBills = async () => {
+  const res = await fetch(`${BASE_URL}/bills`, {
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Failed to fetch bills");
+  return data;
+};
+
+export const createBill = async (payload: any) => {
+  const res = await fetch(`${BASE_URL}/bills`, {
+    method: "POST",
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Failed to create bill");
+  return data;
+};
+
+export const payBillWithTransfer = async (billId: string, payload?: any) => {
+  const res = await fetch(`${BASE_URL}/bills/${billId}/pay-transfer`, {
+    method: "POST",
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify(payload || {}),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Failed to pay bill via transfer");
+  return data;
+};
+
+export const resolveAccountNumber = async (accountNumber: string, bankCode: string) => {
+  const res = await fetch(`${BASE_URL}/paystack/resolve-account`, {
+    method: "POST",
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({ accountNumber, bankCode }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Failed to resolve account number");
+  return data;
+};
+
+export const getBankList = async () => {
+  const res = await fetch(`${BASE_URL}/paystack/banks`, {
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Failed to fetch bank list");
+  return data;
+};

@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Progress } from "./ui/progress";
 import { Badge } from "./ui/badge";
 import { Skeleton } from "./ui/skeleton";
-import { getFinancialGoals, createFinancialGoal, contributeToGoal, deleteFinancialGoal, getCategories } from "../config/api";
+import { getFinancialGoals, createFinancialGoal, contributeToGoal, deleteFinancialGoal, getCategories } from "../Config/api";
 import { toast } from "sonner";
 
 interface Goal {
