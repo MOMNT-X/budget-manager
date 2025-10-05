@@ -4,7 +4,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { AlertCircle, Repeat, Loader2, Plus, Trash2, Pause, Play, Calendar } from "lucide-react";
+import { CircleAlert as AlertCircle, Repeat, Loader as Loader2, Plus, Trash2, Pause, Play, Calendar } from "lucide-react";
 import { Alert, AlertDescription } from "./ui/alert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
 import { Badge } from "./ui/badge";

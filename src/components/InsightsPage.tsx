@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { AlertCircle, TrendingUp, TrendingDown, Lightbulb, Award, AlertTriangle } from "lucide-react";
+import { CircleAlert as AlertCircle, TrendingUp, TrendingDown, Lightbulb, Award, TriangleAlert as AlertTriangle } from "lucide-react";
 import { Alert, AlertDescription } from "./ui/alert";
 import { Badge } from "./ui/badge";
 import { Skeleton } from "./ui/skeleton";
