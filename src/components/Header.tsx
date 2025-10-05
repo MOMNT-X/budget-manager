@@ -3,7 +3,7 @@
 import { Button } from "./ui/button";
 import { useState } from "react";
 import { NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuLink, NavigationMenuList, NavigationMenuTrigger } from "./ui/navigation-menu";
-import { Plus, Settings, Menu, Home, Receipt, CreditCard, Banknote, Building, Target, CoinsIcon, X, User, Sparkles, Users, TrendingUp, Repeat, Lightbulb } from "lucide-react";
+import { Plus, Settings, Menu, Chrome as Home, Receipt, CreditCard, Banknote, Building, Target, Coins as CoinsIcon, X, User, Sparkles, Users, TrendingUp, Repeat, Lightbulb } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 import { useNavigate } from "react-router-dom";
 
