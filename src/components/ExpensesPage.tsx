@@ -176,7 +176,7 @@ export function ExpensesPage() {
     categoryBreakdown = []
   } = summary;
 
-  // Mock data for charts based on actual data
+  // Mock data for chart based on actual data
   const mockWeeklyBreakdown = [
     { week: "Week 1", amount: totalExpenses * 0.25 },
     { week: "Week 2", amount: totalExpenses * 0.30 },
