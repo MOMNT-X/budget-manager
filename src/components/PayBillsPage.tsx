@@ -6,7 +6,7 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Progress } from "./ui/progress";
-import { AlertCircle, CheckCircle, Clock, CreditCard, Building, Zap, Car, Home, Phone, Wifi, Loader2, Plus, Calendar, X, Send, Users } from "lucide-react";
+import { CircleAlert as AlertCircle, CircleCheck as CheckCircle, Clock, CreditCard, Building, Zap, Car, Chrome as Home, Phone, Wifi, Loader as Loader2, Plus, Calendar, X, Send, Users } from "lucide-react";
 import { Alert, AlertDescription } from "./ui/alert";
 import { Skeleton } from "./ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";

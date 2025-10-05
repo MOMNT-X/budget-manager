@@ -9,24 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
 import { confirm } from "../config/api";
 import { Skeleton } from "./ui/skeleton";
-import { 
-  Wallet, 
-  CreditCard, 
-  Plus, 
-  Minus, 
-  ArrowUpRight, 
-  ArrowDownLeft, 
-  History, 
-  DollarSign,
-  TrendingUp,
-  Eye,
-  EyeOff,
-  Copy,
-  CheckCircle,
-  AlertTriangle,
-  RefreshCw,
-  CheckCircle2
-} from "lucide-react";
+import { Wallet, CreditCard, Plus, Minus, ArrowUpRight, ArrowDownLeft, History, DollarSign, TrendingUp, Eye, EyeOff, Copy, CircleCheck as CheckCircle, TriangleAlert as AlertTriangle, RefreshCw, CircleCheck as CheckCircle2 } from "lucide-react";
 import { Alert, AlertDescription } from "./ui/alert";
 import { toast } from "sonner";
 

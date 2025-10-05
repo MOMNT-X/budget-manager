@@ -5,7 +5,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
-import { Search, Filter, Download, Plus, Calendar, ArrowUpDown, Loader2 } from "lucide-react";
+import { Search, ListFilter as Filter, Download, Plus, Calendar, ArrowUpDown, Loader as Loader2 } from "lucide-react";
 import { getTransactions } from "../config/api";
 
 // Skeleton components

@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { Calendar, Filter, TrendingDown, TrendingUp, DollarSign, Coins, TrendingUpDown } from "lucide-react";
+import { Calendar, ListFilter as Filter, TrendingDown, TrendingUp, DollarSign, Coins, TrendingUpDown } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { CandlestickChart } from "./CandlestickChart";
 import { getExpensesSummary } from "../config/api";
