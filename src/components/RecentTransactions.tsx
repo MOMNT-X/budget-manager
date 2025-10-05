@@ -1,9 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Avatar, AvatarFallback } from "./ui/avatar";
-import { CalendarDays, ShoppingCart, Car, Chrome as Home, Utensils, Coffee, Loader as Loader2 } from "lucide-react";
+import { CalendarDays, ShoppingCart, Car, Home, Utensils, Coffee, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
-import { getDashboardTransactions } from "../config/api";
+import { getDashboardTransactions } from "../Config/api";
 
 export interface Transaction {
   id: string;

@@ -6,7 +6,7 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Progress } from "./ui/progress";
-import { CircleAlert as AlertCircle, CircleCheck as CheckCircle, Clock, CreditCard, Building, Zap, Car, Chrome as Home, Phone, Wifi, Loader as Loader2, Plus, Calendar, X, Send, Users } from "lucide-react";
+import { AlertCircle, CheckCircle, Clock, CreditCard, Building, Zap, Car, Home, Phone, Wifi, Loader2, Plus, Calendar, X } from "lucide-react";
 import { Alert, AlertDescription } from "./ui/alert";
 import { Skeleton } from "./ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
@@ -103,9 +103,7 @@ export function PayBillsPage() {
   const [summary, setSummary] = useState<BillsSummary | null>(null);
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
   const [paymentAmount, setPaymentAmount] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("wallet");
-  const [beneficiaries, setBeneficiaries] = useState<any[]>([]);
-  const [selectedBeneficiary, setSelectedBeneficiary] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("");
   const [loading, setLoading] = useState(true);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [error, setError] = useState("");
@@ -124,27 +122,7 @@ export function PayBillsPage() {
   useEffect(() => {
     fetchBills();
     fetchCategories();
-    fetchBeneficiaries();
   }, []);
-
-  const fetchBeneficiaries = async () => {
-    try {
-      const response = await fetch('http://localhost:3000/beneficiaries', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch beneficiaries');
-      }
-
-      const beneficiariesData = await response.json();
-      setBeneficiaries(beneficiariesData);
-    } catch (err) {
-      console.error('Failed to fetch beneficiaries:', err);
-    }
-  };
 
   const fetchCategories = async () => {
     try {
@@ -225,36 +203,13 @@ export function PayBillsPage() {
       setPaymentLoading(true);
       setError("");
 
-      let response;
-
-      if (paymentMethod === 'transfer' && selectedBeneficiary) {
-        const beneficiary = beneficiaries.find(b => b.id === selectedBeneficiary);
-        if (!beneficiary) {
-          throw new Error('Beneficiary not found');
-        }
-
-        response = await fetch(`http://localhost:3000/bills/${selectedBill.id}/pay-transfer`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            accountNumber: beneficiary.accountNumber,
-            accountName: beneficiary.name,
-            bankCode: beneficiary.bankCode,
-            bankName: beneficiary.bankName
-          }),
-        });
-      } else {
-        response = await fetch(`http://localhost:3000/bills/${selectedBill.id}/pay`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-            'Content-Type': 'application/json',
-          },
-        });
-      }
+      const response = await fetch(`http://localhost:3000/bills/${selectedBill.id}/pay`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          'Content-Type': 'application/json',
+        },
+      });
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -263,12 +218,11 @@ export function PayBillsPage() {
 
       // Refresh bills after successful payment
       await fetchBills();
-
+      
       // Reset form
       setSelectedBill(null);
       setPaymentAmount("");
-      setPaymentMethod("wallet");
-      setSelectedBeneficiary("");
+      setPaymentMethod("");
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Payment failed');
@@ -721,56 +675,13 @@ export function PayBillsPage() {
                       <SelectValue placeholder="Select payment method" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="wallet">
-                        <div className="flex items-center gap-2">
-                          <Building className="h-4 w-4" />
-                          Wallet Balance
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="transfer">
-                        <div className="flex items-center gap-2">
-                          <Send className="h-4 w-4" />
-                          Bank Transfer
-                        </div>
-                      </SelectItem>
+                      <SelectItem value="wallet">Wallet Balance</SelectItem>
+                      <SelectItem value="savings">GTB Savings Account (****1234)</SelectItem>
+                      <SelectItem value="current">First Bank Current Account (****5678)</SelectItem>
+                      <SelectItem value="credit">Access Bank Credit Card (****9012)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-
-                {paymentMethod === 'transfer' && (
-                  <div>
-                    <Label htmlFor="beneficiary">Select Beneficiary</Label>
-                    <Select value={selectedBeneficiary} onValueChange={setSelectedBeneficiary} disabled={paymentLoading}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choose beneficiary" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {beneficiaries.length === 0 ? (
-                          <div className="p-4 text-center text-sm text-muted-foreground">
-                            <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                            No beneficiaries found. Add one first.
-                          </div>
-                        ) : (
-                          beneficiaries.map((beneficiary) => (
-                            <SelectItem key={beneficiary.id} value={beneficiary.id}>
-                              <div className="flex flex-col">
-                                <span className="font-medium">{beneficiary.name}</span>
-                                <span className="text-xs text-muted-foreground">
-                                  {beneficiary.bankName} - {beneficiary.accountNumber}
-                                </span>
-                              </div>
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                    {beneficiaries.length === 0 && (
-                      <p className="text-xs text-orange-600 mt-1">
-                        Go to Beneficiaries page to add payment recipients
-                      </p>
-                    )}
-                  </div>
-                )}
 
                 <div className="p-4 bg-muted rounded-lg">
                   <h4 className="font-medium mb-2">Payment Summary</h4>
@@ -799,14 +710,9 @@ export function PayBillsPage() {
                     🔒 Payments are processed securely through your wallet balance
                   </div>
                   <div className="flex space-x-2">
-                    <Button
-                      onClick={processPayment}
-                      disabled={
-                        !paymentMethod ||
-                        !paymentAmount ||
-                        paymentLoading ||
-                        (paymentMethod === 'transfer' && !selectedBeneficiary)
-                      }
+                    <Button 
+                      onClick={processPayment} 
+                      disabled={!paymentMethod || !paymentAmount || paymentLoading}
                     >
                       {paymentLoading ? (
                         <>
@@ -815,12 +721,8 @@ export function PayBillsPage() {
                         </>
                       ) : (
                         <>
-                          {paymentMethod === 'transfer' ? (
-                            <Send className="h-4 w-4 mr-2" />
-                          ) : (
-                            <CreditCard className="h-4 w-4 mr-2" />
-                          )}
-                          {paymentMethod === 'transfer' ? 'Transfer Payment' : 'Process Payment'}
+                          <CreditCard className="h-4 w-4 mr-2" />
+                          Process Payment
                         </>
                       )}
                     </Button>

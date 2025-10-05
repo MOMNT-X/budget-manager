@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getDashboardSummary } from "../config/api";
+import { getDashboardSummary } from "../Config/api";
 import { Dashboard } from "./Dashboard";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 

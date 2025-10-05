@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Progress } from "./ui/progress";
 import { TrendingUp, TrendingDown, Target } from "lucide-react";
-import { getDashboardSummary } from "../config/api";
+import { getDashboardSummary } from "../Config/api";
 
 // Nigerian Naira formatting utility (safe)
 const formatNaira = (amount: number | undefined | null) => {
