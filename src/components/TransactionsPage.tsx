@@ -31,10 +31,21 @@ const TableRowSkeleton = () => (
   </TableRow>
 );
 
+interface Transaction {
+  id: string;
+  description: string;
+  category: string;
+  type: string;
+  originalType: string;
+  amount: number;
+  timestamp: string;
+  status: string;
+}
+
 export function TransactionsPage() {
-  const [transactions, setTransactions] = useState([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [filterCategory, setFilterCategory] = useState("all");
@@ -53,7 +64,7 @@ export function TransactionsPage() {
         filters.type = filterType;
       }
       
-      const data = await getTransactions(filters);
+      const data = await getTransactions();
       setTransactions(data);
       setError(null);
     } catch (err) {
@@ -70,7 +81,7 @@ export function TransactionsPage() {
 
   // Filter and sort transactions
   const filteredTransactions = transactions
-    .filter(transaction => {
+    .filter((transaction: Transaction) => {
       const matchesSearch = transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            transaction.category.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesType = filterType === "all" || transaction.type === filterType;
@@ -78,9 +89,9 @@ export function TransactionsPage() {
       
       return matchesSearch && matchesType && matchesCategory;
     })
-    .sort((a, b) => {
-      let aValue = a[sortBy];
-      let bValue = b[sortBy];
+    .sort((a: Transaction, b: Transaction) => {
+      let aValue: any = a[sortBy as keyof Transaction];
+      let bValue: any = b[sortBy as keyof Transaction];
       
       if (sortBy === "date") {
         aValue = new Date(aValue);
@@ -101,15 +112,15 @@ export function TransactionsPage() {
 
   // Calculate totals
   const totalIncome = transactions
-    .filter(t => t.type === 'deposit' || t.originalType === 'DEPOSIT')
-    .reduce((sum, t) => sum + t.amount, 0);
+    .filter((t: Transaction) => t.type === 'deposit' || t.originalType === 'DEPOSIT')
+    .reduce((sum: number, t: Transaction) => sum + t.amount, 0);
     
   const totalExpenses = transactions
-    .filter(t => t.type === 'expense' || t.originalType === 'EXPENSE')
-    .reduce((sum, t) => sum + t.amount, 0);
+    .filter((t: Transaction) => t.type === 'expense' || t.originalType === 'EXPENSE')
+    .reduce((sum: number, t: Transaction) => sum + t.amount, 0);
 
   // Get unique categories
-  const categories = [...new Set(transactions.map(t => t.category))];
+  const categories = [...new Set(transactions.map((t: Transaction) => t.category))];
 
   // Pagination
   const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
@@ -118,7 +129,7 @@ export function TransactionsPage() {
     currentPage * itemsPerPage
   );
 
-  const handleSort = (field) => {
+  const handleSort = (field: string) => {
     if (sortBy === field) {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
     } else {
@@ -127,19 +138,19 @@ export function TransactionsPage() {
     }
   };
 
-  const getTransactionTypeLabel = (transaction) => {
+  const getTransactionTypeLabel = (transaction: Transaction) => {
     if (transaction.originalType === 'DEPOSIT') return 'Income';
     if (transaction.originalType === 'EXPENSE') return 'Expense';
     return transaction.type;
   };
 
-  const getTransactionColor = (transaction) => {
+  const getTransactionColor = (transaction: Transaction) => {
     if (transaction.originalType === 'DEPOSIT') return 'text-green-600';
     if (transaction.originalType === 'EXPENSE') return 'text-red-600';
     return 'text-gray-600';
   };
 
-  const getTransactionPrefix = (transaction) => {
+  const getTransactionPrefix = (transaction: Transaction) => {
     if (transaction.originalType === 'DEPOSIT') return '+';
     if (transaction.originalType === 'EXPENSE') return '-';
     return '';
