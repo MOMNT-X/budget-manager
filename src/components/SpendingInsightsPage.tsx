@@ -23,7 +23,8 @@ import {
   ArrowUpDown,
   Check,
   Clock,
-  Target
+  Target,
+  Plus
 } from "lucide-react";
 import { format, subDays, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend, PieChart as RechartsPieChart, Pie, LineChart as RechartsLineChart, Line } from "recharts";
@@ -126,15 +127,8 @@ export default function SpendingInsightsPage() {
     setLoading(true);
     setError(null);
     try {
-      // In a real app, this would be an API call
-      // const response = await fetch(`/api/insights/spending?period=${selectedPeriod}&category=${selectedCategory}`);
-      // const data = await response.json();
-      
-      // For now, we'll use mock data
-      // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 800));
       
-      // Mock data
       const mockInsights: SpendingInsight = {
         totalSpent: 245000,
         averageTransaction: 12250,
@@ -184,12 +178,10 @@ export default function SpendingInsightsPage() {
     }
   };
 
-  // Helper function to format currency
   const formatCurrency = (amount: number) => {
     return `₦${amount.toLocaleString('en-NG')}`;
   };
 
-  // Helper function to get period label
   const getPeriodLabel = () => {
     switch (selectedPeriod) {
       case "this-week": return "This Week";
@@ -202,16 +194,13 @@ export default function SpendingInsightsPage() {
     }
   };
 
-  // Load data when component mounts or filters change
   useEffect(() => {
     fetchInsights();
   }, [selectedPeriod, selectedCategory]);
 
-  // Render loading state
   if (loading) {
     return (
       <div className="space-y-6 animate-fade-in">
-        {/* Header skeleton */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <Skeleton className="h-8 w-48 mb-2" />
@@ -223,7 +212,6 @@ export default function SpendingInsightsPage() {
           </div>
         </div>
 
-        {/* Summary cards skeleton */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <CardSkeleton />
           <CardSkeleton />
@@ -231,13 +219,11 @@ export default function SpendingInsightsPage() {
           <CardSkeleton />
         </div>
 
-        {/* Charts skeleton */}
         <div className="grid gap-6 lg:grid-cols-2">
           <ChartSkeleton />
           <ChartSkeleton />
         </div>
 
-        {/* Category analysis skeleton */}
         <Card>
           <CardHeader>
             <Skeleton className="h-6 w-48" />
@@ -251,245 +237,9 @@ export default function SpendingInsightsPage() {
           </CardContent>
         </Card>
       </div>
-      
-      {/* TabsContent for different views */}
-      <TabsContent value="overview" className="space-y-6">
-        {/* Daily Spending Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Daily Spending</CardTitle>
-            <CardDescription>Your spending pattern over the last {selectedPeriod === 'this-week' ? '7' : '30'} days</CardDescription>
-          </CardHeader>
-          <CardContent className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={insights.dailySpending}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis tickFormatter={(value) => `₦${value/1000}k`} />
-                <Tooltip formatter={(value) => [`₦${value.toLocaleString('en-NG')}`, 'Amount']} />
-                <Bar dataKey="amount" fill="#4f46e5" />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Category Breakdown */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>Category Breakdown</CardTitle>
-              <CardDescription>Spending distribution by category</CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {insights.categoryBreakdown.map((category) => (
-                <div key={category.category} className="flex items-center">
-                  <div className="w-12 h-12 rounded-full flex items-center justify-center mr-4" 
-                    style={{ backgroundColor: category.color + '20', color: category.color }}>
-                    <PieChart className="h-5 w-5" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-medium">{category.category}</span>
-                      <span className="font-semibold">{formatCurrency(category.amount)}</span>
-                    </div>
-                    <div className="w-full bg-secondary h-2 rounded-full">
-                      <div 
-                        className="h-2 rounded-full" 
-                        style={{ 
-                          width: `${category.percentage}%`,
-                          backgroundColor: category.color 
-                        }}
-                      />
-                    </div>
-                    <div className="flex justify-between mt-1 text-xs text-muted-foreground">
-                      <span>{category.percentage.toFixed(1)}%</span>
-                      <span>{category.transactions} transactions</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </TabsContent>
-
-      <TabsContent value="trends" className="space-y-6">
-        {/* Monthly Trend Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Monthly Spending Trend</CardTitle>
-            <CardDescription>How your spending has changed over time</CardDescription>
-          </CardHeader>
-          <CardContent className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={insights.monthlyTrend}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis tickFormatter={(value) => `₦${value/1000}k`} />
-                <Tooltip formatter={(value) => [`₦${value.toLocaleString('en-NG')}`, 'Amount']} />
-                <Legend />
-                <Bar dataKey="expenses" name="Expenses" fill="#ef4444" />
-                <Bar dataKey="income" name="Income" fill="#16a34a" />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Spending Patterns */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Spending Patterns</CardTitle>
-            <CardDescription>Analysis of your spending habits</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <Calendar className="h-5 w-5 mr-2 text-blue-500" />
-                  <div>
-                    <p className="font-medium">Highest Spending Day</p>
-                    <p className="text-sm text-muted-foreground">
-                      {insights.dailySpending.reduce((max, day) => 
-                        day.amount > max.amount ? day : max, insights.dailySpending[0]).date}
-                    </p>
-                  </div>
-                </div>
-                <p className="font-semibold">
-                  {formatCurrency(insights.dailySpending.reduce((max, day) => 
-                    day.amount > max.amount ? day : max, insights.dailySpending[0]).amount)}
-                </p>
-              </div>
-              
-              <div className="h-px bg-border my-2" />
-              
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <Clock className="h-5 w-5 mr-2 text-purple-500" />
-                  <div>
-                    <p className="font-medium">Average Daily Spending</p>
-                    <p className="text-sm text-muted-foreground">
-                      Based on {insights.dailySpending.length} days
-                    </p>
-                  </div>
-                </div>
-                <p className="font-semibold">
-                  {formatCurrency(insights.dailySpending.reduce((sum, day) => 
-                    sum + day.amount, 0) / insights.dailySpending.length)}
-                </p>
-              </div>
-              
-              <div className="h-px bg-border my-2" />
-              
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <TrendingUp className="h-5 w-5 mr-2 text-green-500" />
-                  <div>
-                    <p className="font-medium">Spending Growth</p>
-                    <p className="text-sm text-muted-foreground">
-                      Compared to previous period
-                    </p>
-                  </div>
-                </div>
-                <Badge variant={insights.monthlyChange >= 0 ? "outline" : "secondary"} 
-                  className={insights.monthlyChange >= 0 ? "text-green-500" : "text-red-500"}>
-                  {insights.monthlyChange >= 0 ? '+' : ''}{insights.monthlyChange}%
-                </Badge>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </TabsContent>
-
-      <TabsContent value="categories" className="space-y-6">
-        {/* Recurring Expenses */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Recurring Expenses</CardTitle>
-            <CardDescription>Your regular monthly expenses</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {insights.recurringExpenses.map((expense) => (
-                <div key={expense.name} className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center mr-3 bg-blue-100 text-blue-600">
-                      <Clock className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <p className="font-medium">{expense.name}</p>
-                      <p className="text-sm text-muted-foreground">{expense.frequency.toLowerCase()}</p>
-                    </div>
-                  </div>
-                  <p className="font-semibold">{formatCurrency(expense.amount)}</p>
-                </div>
-              ))}
-              
-              {insights.recurringExpenses.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-8 text-center">
-                  <Clock className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No Recurring Expenses</h3>
-                  <p className="text-muted-foreground max-w-sm">
-                    You don't have any recurring expenses set up yet. Add some to track your regular payments.
-                  </p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-          <CardFooter>
-            <Button variant="outline" className="w-full" onClick={() => window.location.href = '/recurring-expenses'}>
-              <Plus className="h-4 w-4 mr-2" />
-              Manage Recurring Expenses
-            </Button>
-          </CardFooter>
-        </Card>
-
-        {/* Top Spending Categories */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Top Spending Categories</CardTitle>
-            <CardDescription>Where most of your money goes</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {insights.categoryBreakdown
-                .sort((a, b) => b.amount - a.amount)
-                .slice(0, 5)
-                .map((category, index) => (
-                  <div key={category.category} className="flex items-center">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center mr-3 text-white"
-                      style={{ backgroundColor: category.color }}>
-                      {index + 1}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-medium">{category.category}</span>
-                        <span className="font-semibold">{formatCurrency(category.amount)}</span>
-                      </div>
-                      <div className="w-full bg-secondary h-2 rounded-full">
-                        <div 
-                          className="h-2 rounded-full" 
-                          style={{ 
-                            width: `${category.percentage}%`,
-                            backgroundColor: category.color 
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-            </div>
-          </CardContent>
-        </Card>
-      </TabsContent>
-    </div>
-  );
-}
     );
   }
 
-  // Render error state
   if (error) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -502,7 +252,6 @@ export default function SpendingInsightsPage() {
     );
   }
 
-  // Render empty state
   if (!insights) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -522,7 +271,6 @@ export default function SpendingInsightsPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header with filters */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Spending Insights</h2>
@@ -545,18 +293,9 @@ export default function SpendingInsightsPage() {
               <SelectItem value="this-year">This Year</SelectItem>
             </SelectContent>
           </Select>
-          
-          <Tabs value={selectedView} onValueChange={setSelectedView} className="w-full sm:w-auto">
-            <TabsList className="grid grid-cols-3 w-full">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="trends">Trends</TabsTrigger>
-              <TabsTrigger value="categories">Categories</TabsTrigger>
-            </TabsList>
-          </Tabs>
         </div>
       </div>
 
-      {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -608,3 +347,239 @@ export default function SpendingInsightsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Tabs value={selectedView} onValueChange={setSelectedView} className="w-full">
+        <TabsList className="grid grid-cols-3 w-full">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="trends">Trends</TabsTrigger>
+          <TabsTrigger value="categories">Categories</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Daily Spending</CardTitle>
+              <CardDescription>Your spending pattern over the last {selectedPeriod === 'this-week' ? '7' : '30'} days</CardDescription>
+            </CardHeader>
+            <CardContent className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={insights.dailySpending}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" />
+                  <YAxis tickFormatter={(value) => `₦${value/1000}k`} />
+                  <Tooltip formatter={(value) => [`₦${value.toLocaleString('en-NG')}`, 'Amount']} />
+                  <Bar dataKey="amount" fill="#4f46e5" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Category Breakdown</CardTitle>
+                <CardDescription>Spending distribution by category</CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {insights.categoryBreakdown.map((category) => (
+                  <div key={category.category} className="flex items-center">
+                    <div className="w-12 h-12 rounded-full flex items-center justify-center mr-4" 
+                      style={{ backgroundColor: category.color + '20', color: category.color }}>
+                      <PieChart className="h-5 w-5" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-medium">{category.category}</span>
+                        <span className="font-semibold">{formatCurrency(category.amount)}</span>
+                      </div>
+                      <div className="w-full bg-secondary h-2 rounded-full">
+                        <div 
+                          className="h-2 rounded-full" 
+                          style={{ 
+                            width: `${category.percentage}%`,
+                            backgroundColor: category.color 
+                          }}
+                        />
+                      </div>
+                      <div className="flex justify-between mt-1 text-xs text-muted-foreground">
+                        <span>{category.percentage.toFixed(1)}%</span>
+                        <span>{category.transactions} transactions</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="trends" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Monthly Spending Trend</CardTitle>
+              <CardDescription>How your spending has changed over time</CardDescription>
+            </CardHeader>
+            <CardContent className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={insights.monthlyTrend}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis tickFormatter={(value) => `₦${value/1000}k`} />
+                  <Tooltip formatter={(value) => [`₦${value.toLocaleString('en-NG')}`, 'Amount']} />
+                  <Legend />
+                  <Bar dataKey="expenses" name="Expenses" fill="#ef4444" />
+                  <Bar dataKey="income" name="Income" fill="#16a34a" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Spending Patterns</CardTitle>
+              <CardDescription>Analysis of your spending habits</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <Calendar className="h-5 w-5 mr-2 text-blue-500" />
+                    <div>
+                      <p className="font-medium">Highest Spending Day</p>
+                      <p className="text-sm text-muted-foreground">
+                        {insights.dailySpending.reduce((max, day) => 
+                          day.amount > max.amount ? day : max, insights.dailySpending[0]).date}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="font-semibold">
+                    {formatCurrency(insights.dailySpending.reduce((max, day) => 
+                      day.amount > max.amount ? day : max, insights.dailySpending[0]).amount)}
+                  </p>
+                </div>
+                
+                <div className="h-px bg-border my-2" />
+                
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <Clock className="h-5 w-5 mr-2 text-purple-500" />
+                    <div>
+                      <p className="font-medium">Average Daily Spending</p>
+                      <p className="text-sm text-muted-foreground">
+                        Based on {insights.dailySpending.length} days
+                      </p>
+                    </div>
+                  </div>
+                  <p className="font-semibold">
+                    {formatCurrency(insights.dailySpending.reduce((sum, day) => 
+                      sum + day.amount, 0) / insights.dailySpending.length)}
+                  </p>
+                </div>
+                
+                <div className="h-px bg-border my-2" />
+                
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <TrendingUp className="h-5 w-5 mr-2 text-green-500" />
+                    <div>
+                      <p className="font-medium">Spending Growth</p>
+                      <p className="text-sm text-muted-foreground">
+                        Compared to previous period
+                      </p>
+                    </div>
+                  </div>
+                  <Badge variant={insights.monthlyChange >= 0 ? "outline" : "secondary"} 
+                    className={insights.monthlyChange >= 0 ? "text-green-500" : "text-red-500"}>
+                    {insights.monthlyChange >= 0 ? '+' : ''}{insights.monthlyChange}%
+                  </Badge>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="categories" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Recurring Expenses</CardTitle>
+              <CardDescription>Your regular monthly expenses</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {insights.recurringExpenses.map((expense) => (
+                  <div key={expense.name} className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center mr-3 bg-blue-100 text-blue-600">
+                        <Clock className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="font-medium">{expense.name}</p>
+                        <p className="text-sm text-muted-foreground">{expense.frequency.toLowerCase()}</p>
+                      </div>
+                    </div>
+                    <p className="font-semibold">{formatCurrency(expense.amount)}</p>
+                  </div>
+                ))}
+                
+                {insights.recurringExpenses.length === 0 && (
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <Clock className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">No Recurring Expenses</h3>
+                    <p className="text-muted-foreground max-w-sm">
+                      You don't have any recurring expenses set up yet. Add some to track your regular payments.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Button variant="outline" className="w-full" onClick={() => window.location.href = '/recurring-expenses'}>
+                <Plus className="h-4 w-4 mr-2" />
+                Manage Recurring Expenses
+              </Button>
+            </CardFooter>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Top Spending Categories</CardTitle>
+              <CardDescription>Where most of your money goes</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {insights.categoryBreakdown
+                  .sort((a, b) => b.amount - a.amount)
+                  .slice(0, 5)
+                  .map((category, index) => (
+                    <div key={category.category} className="flex items-center">
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center mr-3 text-white"
+                        style={{ backgroundColor: category.color }}>
+                        {index + 1}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-medium">{category.category}</span>
+                          <span className="font-semibold">{formatCurrency(category.amount)}</span>
+                        </div>
+                        <div className="w-full bg-secondary h-2 rounded-full">
+                          <div 
+                            className="h-2 rounded-full" 
+                            style={{ 
+                              width: `${category.percentage}%`,
+                              backgroundColor: category.color 
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}

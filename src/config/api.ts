@@ -1,4 +1,24 @@
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000"
+export const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000"
+
+// Common error extractor (NestJS often returns string | string[])
+const extractErrorMessage = (data: any, fallback: string) => {
+  if (!data) return fallback;
+  if (typeof data === 'string') return data;
+  if (typeof data.message === 'string') return data.message;
+  if (Array.isArray(data.message)) return data.message.join(', ');
+  if (data.error) return String(data.error);
+  return fallback;
+};
+
+// Lightweight request helper for new endpoints only (non-breaking)
+async function request(path: string, init?: RequestInit, fallbackMessage = 'Request failed') {
+  const res = await fetch(`${BASE_URL}${path}`, init);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(extractErrorMessage(data, fallbackMessage));
+  }
+  return data;
+}
 
 // Helper to add token
 const authHeaders = () => {
@@ -151,6 +171,23 @@ export const WithdrawBalance = async (amount: number) => {
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || "Failed to fetch balance");
   return data;
+};
+
+// ===== WALLET EXTRAS =====
+export const walletPay = async (payload: { amount: number; description: string; categoryId: string }) => {
+  return await request('/wallet/pay', {
+    method: 'POST',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  }, 'Failed to process payment');
+};
+
+export const walletTransfer = async (payload: { accountNumber: string; bankCode: string; amount: number; description?: string }) => {
+  return await request('/wallet/transfer', {
+    method: 'POST',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  }, 'Transfer failed');
 };
 
 // ==== BILL =====

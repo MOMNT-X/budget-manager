@@ -7,7 +7,7 @@ import { Label } from "./ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
-import { confirm } from "../Config/api";
+import { confirm } from "@/config/api";
 import { Skeleton } from "./ui/skeleton";
 import { 
   Wallet, 
@@ -85,7 +85,7 @@ export function WalletPage() {
   const [payCategory, setPayCategory] = useState("");
 
   // API calls
-  const api = 'http://localhost:3000'
+  const api = import.meta.env.VITE_API_URL || "http://localhost:3000";
   const fetchWalletBalance = async () => {
     setLoading(prev => ({ ...prev, wallet: true }));
     try {
@@ -303,20 +303,17 @@ try {
         })
       });
 
-      if (!response.ok) throw new Error('Failed to process payment');
-      
       const result = await response.json();
-      if (result.message) {
-        toast.success(result.message);
-        setPayAmount("");
-        setPayDescription("");
-        setPayCategory("");
-        await fetchWalletBalance();
-        await fetchTransactions();
-      }
-    } catch (error) {
-      toast.error("Failed to process payment");
-      console.error('Payment error:', error);
+      if (!response.ok) throw new Error(result?.message || 'Failed to process payment');
+
+      toast.success(result?.message || 'Payment processed');
+      setPayAmount("");
+      setPayDescription("");
+      setPayCategory("");
+      await fetchWalletBalance();
+      await fetchTransactions();
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to process payment");
     } finally {
       setLoading(prev => ({ ...prev, action: false }));
     }

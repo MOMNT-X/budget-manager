@@ -14,10 +14,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/components/ui/use-toast";
-import { banks } from "@/data/banks";
+import banks  from "@/components/banks";
 import { Avatar } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import { BASE_URL } from "@/config/api";
 
 interface Category {
   id: string;
@@ -162,16 +163,15 @@ export function PayBillsPage() {
 
   const fetchBeneficiaries = async () => {
     try {
-      const response = await fetch('http://localhost:3000/beneficiaries', {
+      const response = await fetch(`${BASE_URL}/beneficiaries`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
         },
       });
 
-      if (response.ok) {
-        const beneficiariesData = await response.json();
-        setBeneficiaries(beneficiariesData);
-      }
+      const beneficiariesData = await response.json();
+      if (!response.ok) throw new Error(beneficiariesData?.message || 'Failed to fetch beneficiaries');
+      setBeneficiaries(beneficiariesData);
     } catch (err) {
       console.error('Failed to fetch beneficiaries:', err);
     }
@@ -179,17 +179,14 @@ export function PayBillsPage() {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch('http://localhost:3000/categories', {
+      const response = await fetch(`${BASE_URL}/categories`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
         },
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch categories');
-      }
-
       const categoriesData = await response.json();
+      if (!response.ok) throw new Error(categoriesData?.message || 'Failed to fetch categories');
       setCategories(categoriesData);
     } catch (err) {
       console.error('Failed to fetch categories:', err);
@@ -202,17 +199,14 @@ export function PayBillsPage() {
       setError("");
       
       // Fetch all bills
-      const response = await fetch('http://localhost:3000/bills', {
+      const response = await fetch(`${BASE_URL}/bills`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
         },
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch bills');
-      }
-
       const billsData = await response.json();
+      if (!response.ok) throw new Error(billsData?.message || 'Failed to fetch bills');
       setBills(billsData);
 
       // Calculate summary
@@ -256,7 +250,7 @@ export function PayBillsPage() {
       setPaymentLoading(true);
       setError("");
 
-      const response = await fetch(`http://localhost:3000/bills/${selectedBill.id}/pay`, {
+      const response = await fetch(`${BASE_URL}/bills/${selectedBill.id}/pay`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
@@ -264,10 +258,8 @@ export function PayBillsPage() {
         },
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to process payment');
-      }
+      const result = await response.json();
+      if (!response.ok) throw new Error(result?.message || 'Failed to process payment');
 
       // Refresh bills after successful payment
       await fetchBills();
@@ -295,7 +287,7 @@ export function PayBillsPage() {
     setAccountName("");
     
     try {
-      const response = await fetch(`http://localhost:3000/paystack/verify-account`, {
+      const response = await fetch(`${BASE_URL}/paystack/verify-account`, {
         method: "POST",
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
@@ -307,11 +299,8 @@ export function PayBillsPage() {
         }),
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to verify account");
-      }
-
       const data = await response.json();
+      if (!response.ok) throw new Error(data?.message || "Failed to verify account");
       setAccountName(data.account_name);
       setAccountVerified(true);
       toast.success("Account verified successfully");
@@ -340,7 +329,7 @@ export function PayBillsPage() {
       
       // If saving as beneficiary, create beneficiary first
       if (bankTransfer.saveBeneficiary && bankTransfer.beneficiaryName && !selectedBeneficiary) {
-        await fetch("http://localhost:3000/beneficiaries", {
+        await fetch(`${BASE_URL}/beneficiaries`, {
           method: "POST",
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
@@ -356,7 +345,7 @@ export function PayBillsPage() {
       
       // Process the transfer
       const response = await fetch(
-        `http://localhost:3000/wallet/transfer`,
+        `${BASE_URL}/wallet/transfer`,
         {
           method: "POST",
           headers: {
@@ -372,10 +361,8 @@ export function PayBillsPage() {
         }
       );
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Transfer failed");
-      }
+      const result = await response.json();
+      if (!response.ok) throw new Error(result?.message || "Transfer failed");
 
       toast.success("Transfer initiated successfully");
 
@@ -410,7 +397,7 @@ export function PayBillsPage() {
       setAddBillLoading(true);
       setError("");
 
-      const response = await fetch('http://localhost:3000/bills', {
+      const response = await fetch(`${BASE_URL}/bills`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,

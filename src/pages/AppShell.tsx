@@ -1,0 +1,76 @@
+import { useState } from "react";
+import { Header } from "@/components/Header";
+import { Dashboard } from "@/components/Dashboard";
+import { RecentTransactions } from "@/components/RecentTransactions";
+import { CategoryBreakdown } from "@/components/CategoryBreakdown";
+import { ExpensesPage } from "@/components/ExpensesPage";
+import { TransactionsPage } from "@/components/TransactionsPage";
+import { PayBillsPage } from "@/components/PayBillsPage";
+import { WalletPage } from "@/components/WalletPage";
+import { BudgetPage } from "@/components/BudgetPage";
+import NotificationSystem from "@/components/NotificationSystem";
+import SpendingInsightsPage from "@/components/SpendingInsightsPage";
+import { AppProvider } from "@/contexts/AppContext";
+import { mockTransactions, mockCategoryData } from "@/data/mockData";
+import { BottomNav } from "@/components/ui/bottom-nav";
+
+export type PageType = 'dashboard' | 'expenses' | 'transactions' | 'pay-bills' | 'wallet' | 'budget' | 'notifications' | 'spending-insights';
+
+export default function AppShell() {
+  const [currentPage, setCurrentPage] = useState<PageType>('dashboard');
+  const username = localStorage.getItem("username");
+
+  const renderPage = () => {
+    switch (currentPage) {
+      case 'dashboard':
+        return (
+          <div className="grid gap-6 lg:grid-cols-3 animate-fade-in">
+            <div className="lg:col-span-2 space-y-6">
+              <Dashboard />
+              <RecentTransactions transactions={mockTransactions.slice(0, 5)} />
+            </div>
+            <div className="space-y-6">
+              <CategoryBreakdown data={mockCategoryData} />
+            </div>
+          </div>
+        );
+      case 'expenses':
+        return <ExpensesPage />;
+      case 'transactions':
+        return <TransactionsPage />;
+      case 'pay-bills':
+        return <PayBillsPage />;
+      case 'wallet':
+        return <WalletPage />;
+      case 'budget':
+        return <BudgetPage />;
+      case 'notifications':
+        return <NotificationSystem />;
+      case 'spending-insights':
+        return <SpendingInsightsPage />;
+      default:
+        return <div className="text-center text-muted-foreground">Page not found</div>;
+    }
+  };
+
+  return (
+    <AppProvider>
+      <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
+        <Header currentPage={currentPage} onPageChange={setCurrentPage} />
+        <main className="w-full px-6 pb-24 pt-6 space-y-6">
+          {currentPage === 'dashboard' && (
+            <div className="bg-primary text-white p-4 rounded-lg shadow-md">
+              <p className="text-sm">Welcome back, {username} 👋</p>
+              <p className="text-lg font-semibold">Here's your financial overview</p>
+            </div>
+          )}
+          {renderPage()}
+        </main>
+        <div className="h-16" />
+        <BottomNav current={currentPage} onChange={setCurrentPage} />
+      </div>
+    </AppProvider>
+  );
+}
+
+

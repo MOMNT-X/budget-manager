@@ -3,7 +3,7 @@ import { Badge } from "./ui/badge";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { CalendarDays, ShoppingCart, Car, Home, Utensils, Coffee, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
-import { getDashboardTransactions } from "../Config/api";
+import { getDashboardTransactions } from "@/config/api";
 
 export interface Transaction {
   id: string;

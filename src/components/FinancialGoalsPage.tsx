@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertCircle, Target, Loader2, Plus, Trash2, TrendingUp, DollarSign, Calendar, ChevronRight, Award, CheckCircle, PiggyBank, Clock, Search } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -101,13 +101,14 @@ export function FinancialGoalsPage() {
     fetchData();
   }, []);
 
+  const api = import.meta.env.VITE_API_URL || "http://localhost:3000";
   const fetchData = async () => {
     try {
       setLoading(true);
       setError("");
       
       // Fetch data from API
-      const response = await fetch('http://localhost:3000/financial-goals', {
+      const response = await fetch(`${api}/financial-goals`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
         },
@@ -706,9 +707,6 @@ export function FinancialGoalsPage() {
       </Dialog>
     </div>
   );
-    return colors[status] || 'bg-gray-100 text-gray-800';
-  };
-
   if (loading) {
     return (
       <div className="space-y-6">
@@ -1003,9 +1001,9 @@ export function FinancialGoalsPage() {
             {selectedGoal && (
               <>
                 <div className="p-4 bg-muted rounded-lg">
-                  <h4 className="font-medium mb-1">{selectedGoal.name}</h4>
+                  <h4 className="font-medium mb-1">{selectedGoal?.name}</h4>
                   <p className="text-sm text-muted-foreground">
-                    Current: ₦{selectedGoal.currentAmount.toLocaleString('en-NG')} of ₦{selectedGoal.targetAmount.toLocaleString('en-NG')}
+                    Current: ₦{selectedGoal?.currentAmount.toLocaleString('en-NG')} of ₦{selectedGoal?.targetAmount.toLocaleString('en-NG')}
                   </p>
                 </div>
 

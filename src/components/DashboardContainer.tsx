@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getDashboardSummary } from "../Config/api";
+import { getDashboardSummary } from "@/config/api";
 import { Dashboard } from "./Dashboard";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 
@@ -36,13 +36,5 @@ export function DashboardContainer() {
 
   if (!data) return <p className="px-4">No dashboard data available.</p>;
 
-  return (
-    <Dashboard
-      userName={data.userName}
-      walletBalance={data.walletBalance}
-      monthlyExpenses={data.monthlyExpenses}
-      monthlyBudget={data.monthlyBudget}
-      percentageChange={data.percentageChange}
-    />
-  );
+  return <Dashboard />;
 }

@@ -2,16 +2,18 @@ import { useState } from "react";
 import { Dashboard } from "../components/Dashboard";
 import { RecentTransactions } from "../components/RecentTransactions";
 import { CategoryBreakdown } from "../components/CategoryBreakdown";
-import { Header } from "../components/Header";
+import { Header } from "@/components/Header";
 import { ExpensesPage } from "../components/ExpensesPage";
 import { TransactionsPage } from "../components/TransactionsPage";
 import { PayBillsPage } from "../components/PayBillsPage";
 import { WalletPage } from "../components/WalletPage";
 import { BudgetPage } from "../components/BudgetPage";
-import NotificationSystem from "../components/NotificationSystem";
+import NotificationSystem from "@/components/NotificationSystem";
 import SpendingInsightsPage from "../components/SpendingInsightsPage";
-import { AppProvider, useApp } from "../contexts/AppContext";
+import { AppProvider } from "@/contexts/AppContext";
+import { BottomNav } from "@/components/ui/bottom-nav";
 import { mockTransactions, mockCategoryData } from "../data/mockData";
+import { Toaster } from "@/components/ui/toaster";
 
 export type PageType = 'dashboard' | 'expenses' | 'transactions' | 'pay-bills' | 'wallet' | 'budget' | 'notifications' | 'spending-insights';
 
@@ -57,8 +59,10 @@ function LayoutContent() {
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
       <Header currentPage={currentPage} onPageChange={setCurrentPage} />
+      <Toaster />
+      {/* Main Content Area */}
 
-      <main className="w-full px-6 py-6 space-y-6">
+      <main className="w-full px-6 pb-24 pt-6 space-y-6">
         {/* Optional Welcome Banner */}
         {currentPage === 'dashboard' && (
           <div className="bg-primary text-white p-4 rounded-lg shadow-md">
@@ -73,10 +77,8 @@ function LayoutContent() {
         {renderPage()}
       </main>
 
-      {/* Footer */}
-      <footer className="text-center text-xs text-muted-foreground py-4">
-        &copy; {new Date().getFullYear()} Budget Manager by Emmanuel
-      </footer>
+      <div className="h-16" />
+      <BottomNav current={currentPage} onChange={setCurrentPage} />
     </div>
   );
 }
