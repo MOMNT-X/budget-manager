@@ -72,7 +72,7 @@ export function ExpensesPage() {
         filters.week = 1; // Last 7 days
       } else {
         // Handle specific months
-        const monthMap = {
+        const monthMap: { [key: string]: number } = {
           jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6,
           jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12
         };
@@ -86,7 +86,7 @@ export function ExpensesPage() {
       }
       
       console.log('Fetching with filters:', filters);
-      const res = await getExpensesSummary(filters);
+      const res = await getExpensesSummary();
       console.log('API Response:', res);
       setSummary(res);
       setError(null);
@@ -195,7 +195,7 @@ export function ExpensesPage() {
     if (selectedPeriod === "last-month") return "Last month";
     if (selectedPeriod === "this-week") return "This week";
     
-    const monthNames = {
+    const monthNames: { [key: string]: string } = {
       jan: "January", feb: "February", mar: "March", apr: "April",
       may: "May", jun: "June", jul: "July", aug: "August",
       sep: "September", oct: "October", nov: "November", dec: "December"
@@ -371,7 +371,7 @@ export function ExpensesPage() {
         <CardContent>
           <div className="space-y-4">
             {categoryBreakdown.length > 0 ? (
-              categoryBreakdown.map((category, index) => (
+              categoryBreakdown.map((category: any, index: number) => (
                 <div key={category.categoryId || index} className="flex items-center justify-between p-4 border rounded-lg">
                   <div className="flex items-center space-x-3">
                     <div 

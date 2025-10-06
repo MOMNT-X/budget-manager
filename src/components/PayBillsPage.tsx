@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
-import { AlertCircle, CheckCircle, Clock, CreditCard, Building, Zap, Car, Home, Phone, Wifi, Loader2, Plus, Calendar, X, Bank, User, Search, ArrowRight } from "lucide-react";
+import { AlertCircle, CheckCircle, Clock, CreditCard, Building, Zap, Car, Home, Phone, Wifi, Loader2, Plus, Calendar, X, Building2 as Bank, User, Search, ArrowRight } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -278,7 +278,11 @@ export function PayBillsPage() {
   
   const verifyAccount = async () => {
     if (!bankTransfer.accountNumber || !bankTransfer.bankCode) {
-      toast.error("Please enter account number and select a bank");
+      toast({
+        title: "Error",
+        description: "Please enter account number and select a bank",
+        variant: "destructive",
+      });
       return;
     }
     
@@ -303,9 +307,16 @@ export function PayBillsPage() {
       if (!response.ok) throw new Error(data?.message || "Failed to verify account");
       setAccountName(data.account_name);
       setAccountVerified(true);
-      toast.success("Account verified successfully");
+      toast({
+        title: "Success",
+        description: "Account verified successfully",
+      });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Account verification failed");
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : "Account verification failed",
+        variant: "destructive",
+      });
       setAccountVerified(false);
     } finally {
       setVerifyingAccount(false);
@@ -314,12 +325,20 @@ export function PayBillsPage() {
 
   const handleBankTransfer = async () => {
     if (!bankTransfer.accountNumber || !bankTransfer.bankCode || !bankTransfer.amount) {
-      toast.error("Please fill all required fields");
+      toast({
+        title: "Error",
+        description: "Please fill all required fields",
+        variant: "destructive",
+      });
       return;
     }
     
     if (!accountVerified && !selectedBeneficiary) {
-      toast.error("Please verify account before proceeding");
+      toast({
+        title: "Error",
+        description: "Please verify account before proceeding",
+        variant: "destructive",
+      });
       return;
     }
     
@@ -364,7 +383,10 @@ export function PayBillsPage() {
       const result = await response.json();
       if (!response.ok) throw new Error(result?.message || "Transfer failed");
 
-      toast.success("Transfer initiated successfully");
+      toast({
+        title: "Success",
+        description: "Transfer initiated successfully",
+      });
 
       // Reset form
       setBankTransfer({
@@ -385,7 +407,11 @@ export function PayBillsPage() {
       }
       
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Transfer failed');
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : 'Transfer failed',
+        variant: "destructive",
+      });
       setError(err instanceof Error ? err.message : 'Transfer failed');
     } finally {
       setIsBankTransferLoading(false);

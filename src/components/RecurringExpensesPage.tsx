@@ -20,20 +20,22 @@ import {
   Clock,
   DollarSign,
   Bell,
-  BarChart
+  BarChart,
+  Pencil,
+  Check
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "@/components/ui/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { format, addDays, addWeeks, addMonths, addYears } from "date-fns";
 import { getRecurringExpenses, createRecurringExpense, updateRecurringExpense, deleteRecurringExpense, getCategories } from "@/config/api";
-import { toast } from "sonner";
 
 interface RecurringExpense {
   id: string;
@@ -133,7 +135,11 @@ export function RecurringExpensesPage() {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load recurring expenses';
       setError(errorMessage);
-      toast.error(errorMessage);
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -141,7 +147,11 @@ export function RecurringExpensesPage() {
 
   const handleAddExpense = async () => {
     if (!newExpense.amount || !newExpense.description || !newExpense.categoryId) {
-      toast.error("Please fill in all required fields");
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -294,7 +304,7 @@ export function RecurringExpensesPage() {
   };
 
   const getFrequencyColor = (frequency: string) => {
-    const colors = {
+    const colors: { [key: string]: string } = {
       DAILY: 'bg-red-100 text-red-800 border-red-200',
       WEEKLY: 'bg-blue-100 text-blue-800 border-blue-200',
       MONTHLY: 'bg-green-100 text-green-800 border-green-200',
