@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Progress } from "./ui/progress";
 import { TrendingUp, TrendingDown, Target } from "lucide-react";
 import { getDashboardSummary } from "@/config/api";
+import { RecentTransactions } from "../components/RecentTransactions";
+import { CategoryBreakdown } from "../components/CategoryBreakdown";
 
 // Nigerian Naira formatting utility (safe)
 const formatNaira = (amount: number | undefined | null) => {
@@ -225,7 +227,7 @@ const isOverBudget = monthlyExpensesNaira > monthlyBudget;
               <div className="flex justify-between text-sm text-red-500">
                 <span>
                   Over budget by:{" "}
-                  {formatNaira(monthlyExpenses - monthlyBudget)}
+                  {formatNaira((monthlyExpenses - monthlyBudget)/100)}
                 </span>
                 <span>{(budgetUsed - 100).toFixed(1)}% over</span>
               </div>
@@ -233,6 +235,27 @@ const isOverBudget = monthlyExpensesNaira > monthlyBudget;
           </div>
         </CardContent>
       </Card>
+
+{/* Category Breakdown */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Category Breakdown</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <CategoryBreakdown />
+        </CardContent>
+      </Card>
+      
+      {/* Recent Transactions */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Transactions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <RecentTransactions />
+        </CardContent>
+      </Card>
+
     </div>
   );
 }

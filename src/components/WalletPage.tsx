@@ -10,8 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { confirm } from "@/config/api";
 import { Skeleton } from "./ui/skeleton";
 import { 
-  Wallet, 
-  CreditCard, 
+  Wallet,  
   Plus, 
   Minus, 
   ArrowUpRight, 
@@ -22,10 +21,10 @@ import {
   Eye,
   EyeOff,
   Copy,
-  CheckCircle,
   AlertTriangle,
   RefreshCw,
-  CheckCircle2
+  CheckCircle2,
+  PieChart
 } from "lucide-react";
 import { Alert, AlertDescription } from "./ui/alert";
 import { toast } from "sonner";
@@ -682,37 +681,43 @@ try {
                       const Icon = getTransactionIcon(transaction.type);
                       const category = categories.find(c => c.id === transaction.categoryId);
                       
-                      return (
-                        <div key={transaction.id} className="flex items-center justify-between p-4 border rounded-lg">
-                          <div className="flex items-center space-x-3">
-                            <div className={`p-2 rounded-lg bg-muted ${getTransactionColor(transaction.type)}`}>
-                              <Icon className="h-4 w-4" />
-                            </div>
-                            <div>
-                              <p className="font-medium">{transaction.description}</p>
-                              <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                                <span>{transaction.reference}</span>
-                                <Badge variant={transaction.status === 'success' ? 'default' : 'secondary'}>
-                                  {transaction.status}
-                                </Badge>
-                                {category && (
-                                  <span className="flex items-center gap-1">
-                                    {category.icon && category.icon} {category.name}
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-xs text-muted-foreground">
-                                {new Date(transaction.timestamp).toLocaleString()}
-                              </p>
+                        return (
+                        <div key={transaction.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 border rounded-lg space-y-2 sm:space-y-0">
+                          <div className="flex items-start space-x-3 w-full sm:w-auto">
+                          <div className={`p-1.5 rounded-lg bg-muted ${getTransactionColor(transaction.type)} shrink-0`}>
+                            <Icon className="h-4 w-4" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium truncate text-sm">
+                            {transaction.type === 'DEPOSIT' ? 'Wallet Deposit' : 
+                             transaction.type === 'INCOME' ? 'Income' : 
+                             transaction.description}
+                            </p>
+                            <div className="flex flex-wrap items-center gap-2">
+                            {category && (
+                              <Badge variant="secondary" className="flex items-center gap-1 text-xs">
+                              {category.icon} {category.name}
+                              </Badge>
+                            )}
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(transaction.timestamp).toLocaleDateString('en-US', {
+                              day: 'numeric',
+                              month: 'short',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                              })}
+                            </span>
                             </div>
                           </div>
-                          <div className="text-right">
-                            <p className={`font-bold ${getTransactionColor(transaction.type)}`}>
-                              {(transaction.type === 'DEPOSIT' || transaction.type === 'INCOME') ? '+' : '-'}{formatCurrency(transaction.amount)}
-                            </p>
+                          </div>
+                          <div className="flex flex-col items-end w-full sm:w-auto">
+                          <p className={`font-medium text-base ${getTransactionColor(transaction.type)}`}>
+                            {(transaction.type === 'DEPOSIT' || transaction.type === 'INCOME') ? '+' : '-'}
+                            {formatCurrency(transaction.amount)}
+                          </p>
                           </div>
                         </div>
-                      );
+                        );
                     })}
                   </div>
                 )}
@@ -793,114 +798,123 @@ try {
           </Card>
         </TabsContent>
 
-        <TabsContent value="analytics" className="space-y-6">
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Spending by Category</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {loading.transactions || loading.categories ? (
-                  <div className="space-y-3">
-                    {[1, 2, 3, 4].map((i) => (
-                      <div key={i} className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Skeleton className="h-4 w-4" />
-                          <Skeleton className="h-4 w-24" />
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Skeleton className="h-2 w-20" />
-                          <Skeleton className="h-4 w-16" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {categories.slice(0, 4).map((category) => {
-                      const categoryExpenses = transactions
-                        .filter(t => t.categoryId === category.id && (t.type === 'EXPENSE'))
-                        .reduce((sum, t) => sum + t.amount, 0);
-                      
-                      const totalExpenses = monthlyStats.expenses || 1;
-                      const percentage = (categoryExpenses / totalExpenses) * 100;
-                      
-                      return (
-                        <div key={category.id} className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span>{category.icon || '📁'}</span>
-                            <span className="text-sm">{category.name}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className="w-20 bg-muted rounded-full h-2">
-                              <div 
-                                className="bg-blue-500 h-2 rounded-full" 
-                                style={{ width: `${Math.min(percentage, 100)}%` }}
-                              />
-                            </div>
-                            <span className="text-sm font-medium">{formatCurrency(categoryExpenses)}</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Monthly Summary</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {loading.transactions ? (
-                  <div className="space-y-4">
-                    {[1, 2, 3].map((i) => (
-                      <div key={i} className="flex justify-between items-center p-3 bg-muted rounded-lg">
-                        <Skeleton className="h-4 w-24" />
-                        <Skeleton className="h-5 w-20" />
-                      </div>
-                    ))}
-                    <div className="pt-2">
-                      <Skeleton className="h-4 w-full" />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-                      <span className="text-sm font-medium">Total Income</span>
-                      <span className="font-bold text-green-600">{formatCurrency(monthlyStats.income)}</span>
-                    </div>
-                    <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg">
-                      <span className="text-sm font-medium">Total Expenses</span>
-                      <span className="font-bold text-red-600">{formatCurrency(monthlyStats.expenses)}</span>
-                    </div>
-                    <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
-                      <span className="text-sm font-medium">Net Savings</span>
-                      <span className={`font-bold ${monthlyStats.netFlow >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                        {formatCurrency(Math.abs(monthlyStats.netFlow))}
-                      </span>
-                    </div>
-                    <div className="pt-2">
-                      {monthlyStats.income > 0 ? (
-                        <p className="text-sm text-muted-foreground">
-                          {monthlyStats.netFlow >= 0 
-                            ? `You saved ${((monthlyStats.netFlow / monthlyStats.income) * 100).toFixed(1)}% of your income this month! 🎉`
-                            : `You overspent by ${((Math.abs(monthlyStats.netFlow) / monthlyStats.income) * 100).toFixed(1)}% this month 📉`
-                          }
-                        </p>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">
-                          Start adding transactions to see your monthly summary
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+<TabsContent value="analytics" className="space-y-6">
+  <div className="grid gap-6 md:grid-cols-2">
+    {/* Spending by Category - Now First */}
+    <Card className="border-2 border-purple-100 shadow-lg">
+      <CardHeader>
+        <CardTitle className="text-xl font-semibold flex items-center gap-2">
+          <PieChart className="h-5 w-5 text-purple-600" />
+          Expense Categories
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {loading.transactions || loading.categories ? (
+          <div className="space-y-6">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="animate-pulse">
+                <div className="flex items-center justify-between mb-2">
+                  <Skeleton className="h-4 w-28" />
+                  <Skeleton className="h-4 w-20" />
+                </div>
+                <Skeleton className="h-2 w-full rounded-full" />
+              </div>
+            ))}
           </div>
-        </TabsContent>
+        ) : (
+          <div className="space-y-6">
+            {categories.slice(0, 4).map((category) => {
+              const categoryExpenses = transactions
+                .filter(t => t.categoryId === category.id && t.type === 'EXPENSE')
+                .reduce((sum, t) => sum + t.amount, 0);
+
+              const totalExpenses = monthlyStats.expenses || 1;
+              const percentage = (categoryExpenses / totalExpenses) * 100;
+
+              return (
+                <div key={category.id}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">{category.icon || '📁'}</span>
+                      <span className="font-medium">{category.name}</span>
+                    </div>
+                    <span className="text-sm font-bold text-purple-600">
+                      {formatCurrency(categoryExpenses)}
+                    </span>
+                  </div>
+                  <div className="relative h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className="absolute top-0 left-0 h-full bg-gradient-to-r from-violet-500 to-purple-500 rounded-full transition-all duration-500"
+                      style={{ width: `${Math.min(percentage, 100)}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1 text-right">{percentage.toFixed(1)}%</p>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+
+    {/* Monthly Overview - Now Second */}
+    <Card className="shadow-lg border-0 bg-white">
+      <CardHeader className="border-b">
+        <CardTitle className="text-xl font-semibold flex items-center gap-2">
+          <TrendingUp className="h-5 w-5 text-blue-600" />
+          Current Month Overview
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="pt-6">
+        {loading.transactions ? (
+          <div className="space-y-4 animate-pulse">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="h-5 w-24" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="rounded-xl p-4 bg-emerald-50">
+                <p className="text-emerald-600 text-sm font-medium mb-1">Income</p>
+                <p className="text-2xl font-bold text-emerald-700">{formatCurrency(monthlyStats.income)}</p>
+                <ArrowDownLeft className="h-4 w-4 text-emerald-500 mt-2" />
+              </div>
+              <div className="rounded-xl p-4 bg-rose-50">
+                <p className="text-rose-600 text-sm font-medium mb-1">Expenses</p>
+                <p className="text-2xl font-bold text-rose-700">{formatCurrency(monthlyStats.expenses)}</p>
+                <ArrowUpRight className="h-4 w-4 text-rose-500 mt-2" />
+              </div>
+            </div>
+            
+            <div className="rounded-xl p-4 bg-blue-50">
+              <div className="flex justify-between items-center mb-2">
+                <p className="text-blue-700 text-sm font-medium">Net Balance</p>
+                <Badge variant={monthlyStats.netFlow >= 0 ? "success" : "destructive"} 
+                      className={monthlyStats.netFlow >= 0 ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}>
+                  {monthlyStats.netFlow >= 0 ? "POSITIVE" : "NEGATIVE"}
+                </Badge>
+              </div>
+              <p className={`text-3xl font-bold ${monthlyStats.netFlow >= 0 ? 'text-blue-700' : 'text-rose-700'}`}>
+                {formatCurrency(Math.abs(monthlyStats.netFlow))}
+              </p>
+              {monthlyStats.income > 0 && (
+                <p className="text-sm text-b</div>lue-600 mt-2 font-medium">
+                  {monthlyStats.netFlow >= 0 
+                    ? `Saving ${((monthlyStats.netFlow / monthlyStats.income) * 100).toFixed(1)}% of income`
+                    : `${((Math.abs(monthlyStats.netFlow) / monthlyStats.income) * 100).toFixed(1)}% overspent`}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  </div>
+</TabsContent>
       </Tabs>
     </div>
   );

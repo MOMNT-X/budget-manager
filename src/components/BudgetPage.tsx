@@ -129,6 +129,7 @@ const fetchData = async () => {
     });
     if (!budgetsResponse.ok) throw new Error('Failed to fetch budgets');
     const budgetsData = await budgetsResponse.json();
+    // localStorage.setItem('budgets', JSON.stringify(budgetsData));
 
     // Fetch categories
     const categoriesResponse = await fetch(`${api}/categories`, {
@@ -507,7 +508,7 @@ const fetchData = async () => {
             <Progress value={Math.min(budgetUtilization, 100)} className="w-full" />
             <div className="flex justify-between text-sm text-muted-foreground">
               <span>Budget: ₦{(totalAllocated ).toLocaleString('en-NG')}</span>
-              <span>Remaining: ₦{(totalRemaining / 100).toLocaleString('en-NG')}</span>
+              <span>Remaining: ₦{(totalRemaining).toLocaleString('en-NG')}</span>
             </div>
           </div>
         </CardContent>

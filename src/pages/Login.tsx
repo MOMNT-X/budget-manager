@@ -87,8 +87,8 @@ export default function LoginPage({ onAuthSuccess }: { onAuthSuccess?: () => voi
 
       // Force a complete page reload to ensure fresh state
       setTimeout(() => {
-        console.log("🔄 Redirecting to layout with fresh state...");
-        window.location.href = "/layout"; // Force reload instead of navigate
+        console.log("🔄 Redirecting to app with fresh state...");
+        window.location.href = "/app"; // Force reload instead of navigate
       }, 2000);
 
     } catch (err: any) {

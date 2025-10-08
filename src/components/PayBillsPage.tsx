@@ -9,7 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { AlertCircle, CheckCircle, Clock, CreditCard, Building, Zap, Car, Home, Phone, Wifi, Loader2, Plus, Calendar, X, Building2 as Bank, User, Search, ArrowRight } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -17,6 +17,7 @@ import { toast } from "@/components/ui/use-toast";
 import banks  from "@/components/banks";
 import { Avatar } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { NotificationModal, EnhancedToast } from "@/components/notification-modal";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { BASE_URL } from "@/config/api";
 
@@ -136,6 +137,42 @@ export function PayBillsPage() {
     dueDate: '',
     autoPay: false
   });
+
+    const [showPaymentTransferModal, setShowPaymentTransferModal] = useState(false);
+  const [paymentTransferData, setPaymentTransferData] = useState({
+    beneficiaryId: "",
+    recipientAccountNumber: "",
+    recipientAccountName: "",
+    recipientBankCode: "",
+    recipientBankName: "",
+  });
+  const [verifyingPaymentAccount, setVerifyingPaymentAccount] = useState(false);
+  const [paymentAccountVerified, setPaymentAccountVerified] = useState(false);
+  const [showPaymentBankList, setShowPaymentBankList] = useState(false);
+  const [paymentBankSearchQuery, setPaymentBankSearchQuery] = useState("");
+
+  // ADD NOTIFICATION STATE
+  const [notification, setNotification] = useState<{
+    isOpen: boolean;
+    type: 'success' | 'error' | 'info';
+    title: string;
+    message: string;
+  }>({
+    isOpen: false,
+    type: 'success',
+    title: '',
+    message: ''
+  });
+
+  // HELPER FUNCTION TO SHOW NOTIFICATIONS
+  const showNotification = (type: 'success' | 'error' | 'info', title: string, message: string) => {
+    setNotification({
+      isOpen: true,
+      type,
+      title,
+      message
+    });
+  };
   
   // Bank Transfer States
   const [bankTransfer, setBankTransfer] = useState({
@@ -238,57 +275,33 @@ export function PayBillsPage() {
     }
   };
 
-  const handlePayBill = (bill: Bill) => {
+const handlePayBill = (bill: Bill) => {
     setSelectedBill(bill);
-    setPaymentAmount((bill.amount / 100).toString()); // Convert from kobo to naira
+    setPaymentAmount((bill.amount / 100).toString());
+    setPaymentMethod("wallet"); // Auto-select wallet
+    
+    // Open the transfer modal for bank details
+    setShowPaymentTransferModal(true);
+    
+    // Reset transfer data
+    setPaymentTransferData({
+      beneficiaryId: "",
+      recipientAccountNumber: "",
+      recipientAccountName: "",
+      recipientBankCode: "",
+      recipientBankName: "",
+    });
+    setPaymentAccountVerified(false);
   };
 
-  const processPayment = async () => {
-    if (!selectedBill) return;
-
-    try {
-      setPaymentLoading(true);
-      setError("");
-
-      const response = await fetch(`${BASE_URL}/bills/${selectedBill.id}/pay`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const result = await response.json();
-      if (!response.ok) throw new Error(result?.message || 'Failed to process payment');
-
-      // Refresh bills after successful payment
-      await fetchBills();
-      
-      // Reset form
-      setSelectedBill(null);
-      setPaymentAmount("");
-      setPaymentMethod("");
-
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Payment failed');
-    } finally {
-      setPaymentLoading(false);
-    }
-  };
-  
-  const verifyAccount = async () => {
-    if (!bankTransfer.accountNumber || !bankTransfer.bankCode) {
-      toast({
-        title: "Error",
-        description: "Please enter account number and select a bank",
-        variant: "destructive",
-      });
+  // VERIFY ACCOUNT FOR BILL PAYMENT
+  const verifyPaymentAccount = async () => {
+    if (!paymentTransferData.recipientAccountNumber || !paymentTransferData.recipientBankCode) {
+      showNotification('error', 'Validation Error', 'Please enter account number and select a bank');
       return;
     }
     
-    setVerifyingAccount(true);
-    setAccountVerified(false);
-    setAccountName("");
+    setVerifyingPaymentAccount(true);
     
     try {
       const response = await fetch(`${BASE_URL}/paystack/verify-account`, {
@@ -298,125 +311,125 @@ export function PayBillsPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          account_number: bankTransfer.accountNumber,
-          bank_code: bankTransfer.bankCode
+          accountNumber: paymentTransferData.recipientAccountNumber,
+          bankCode: paymentTransferData.recipientBankCode
         }),
       });
 
       const data = await response.json();
       if (!response.ok) throw new Error(data?.message || "Failed to verify account");
-      setAccountName(data.account_name);
-      setAccountVerified(true);
-      toast({
-        title: "Success",
-        description: "Account verified successfully",
-      });
+      
+      setPaymentTransferData(prev => ({
+        ...prev,
+        recipientAccountName: data.account_name
+      }));
+      setPaymentAccountVerified(true);
+      
+      showNotification('success', 'Account Verified', `Account belongs to ${data.account_name}`);
+      
     } catch (err) {
-      toast({
-        title: "Error",
-        description: err instanceof Error ? err.message : "Account verification failed",
-        variant: "destructive",
-      });
-      setAccountVerified(false);
+      showNotification('error', 'Verification Failed', err instanceof Error ? err.message : "Account verification failed");
+      setPaymentAccountVerified(false);
     } finally {
-      setVerifyingAccount(false);
+      setVerifyingPaymentAccount(false);
     }
   };
 
-  const handleBankTransfer = async () => {
-    if (!bankTransfer.accountNumber || !bankTransfer.bankCode || !bankTransfer.amount) {
-      toast({
-        title: "Error",
-        description: "Please fill all required fields",
-        variant: "destructive",
-      });
+  // SELECT BENEFICIARY FOR BILL PAYMENT
+  const selectBeneficiaryForPayment = (beneficiary: Beneficiary) => {
+    setPaymentTransferData({
+      beneficiaryId: beneficiary.id,
+      recipientAccountNumber: beneficiary.accountNumber,
+      recipientAccountName: beneficiary.name,
+      recipientBankCode: beneficiary.bankCode,
+      recipientBankName: beneficiary.bankName,
+    });
+    setPaymentAccountVerified(true); // Beneficiaries are pre-verified
+  };
+
+  // PROCESS BILL PAYMENT WITH TRANSFER
+  const processPaymentWithTransfer = async () => {
+    if (!selectedBill) return;
+
+    // Validate
+    if (!paymentAccountVerified && !paymentTransferData.beneficiaryId) {
+      showNotification('error', 'Verification Required', 'Please verify the account before proceeding');
       return;
     }
-    
-    if (!accountVerified && !selectedBeneficiary) {
-      toast({
-        title: "Error",
-        description: "Please verify account before proceeding",
-        variant: "destructive",
-      });
+
+    if (!paymentTransferData.recipientAccountNumber || !paymentTransferData.recipientBankCode) {
+      showNotification('error', 'Missing Information', 'Please provide complete bank account details');
       return;
     }
-    
-    setIsBankTransferLoading(true);
+
     try {
+      setPaymentLoading(true);
       setError("");
+
+      // Prepare the request body
+      const requestBody: any = {};
       
-      // If saving as beneficiary, create beneficiary first
-      if (bankTransfer.saveBeneficiary && bankTransfer.beneficiaryName && !selectedBeneficiary) {
-        await fetch(`${BASE_URL}/beneficiaries`, {
-          method: "POST",
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name: bankTransfer.beneficiaryName || accountName,
-            accountNumber: bankTransfer.accountNumber,
-            bankCode: bankTransfer.bankCode
-          }),
-        });
+      if (paymentTransferData.beneficiaryId) {
+        requestBody.beneficiaryId = paymentTransferData.beneficiaryId;
+      } else {
+        requestBody.recipientAccountNumber = paymentTransferData.recipientAccountNumber;
+        requestBody.recipientBankCode = paymentTransferData.recipientBankCode;
+        requestBody.recipientBankName = paymentTransferData.recipientBankName;
       }
-      
-      // Process the transfer
-      const response = await fetch(
-        `${BASE_URL}/wallet/transfer`,
-        {
-          method: "POST",
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            accountNumber: selectedBeneficiary ? selectedBeneficiary.accountNumber : bankTransfer.accountNumber,
-            bankCode: selectedBeneficiary ? selectedBeneficiary.bankCode : bankTransfer.bankCode,
-            amount: parseFloat(bankTransfer.amount) * 100, // Convert to kobo
-            description: bankTransfer.description || "Bank Transfer"
-          }),
-        }
-      );
+
+      const response = await fetch(`${BASE_URL}/bills/${selectedBill.id}/pay-transfer`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
 
       const result = await response.json();
-      if (!response.ok) throw new Error(result?.message || "Transfer failed");
+      if (!response.ok) throw new Error(result?.message || 'Failed to process payment');
 
-      toast({
-        title: "Success",
-        description: "Transfer initiated successfully",
-      });
+      // SUCCESS
+      showNotification(
+        'success',
+        'Payment Successful!',
+        `Your bill payment of ₦${(selectedBill.amount / 100).toLocaleString('en-NG')} for ${selectedBill.description} has been initiated. Transfer to ${paymentTransferData.recipientAccountName} is being processed.`
+      );
 
-      // Reset form
-      setBankTransfer({
-        accountNumber: "",
-        bankCode: "",
-        amount: "",
-        description: "",
-        saveBeneficiary: false,
-        beneficiaryName: "",
+      // Refresh bills
+      await fetchBills();
+      
+      // Reset form and close modals
+      setSelectedBill(null);
+      setPaymentAmount("");
+      setPaymentMethod("");
+      setShowPaymentTransferModal(false);
+      setPaymentTransferData({
+        beneficiaryId: "",
+        recipientAccountNumber: "",
+        recipientAccountName: "",
+        recipientBankCode: "",
+        recipientBankName: "",
       });
-      setSelectedBeneficiary(null);
-      setAccountVerified(false);
-      setAccountName("");
-      
-      // Refresh beneficiaries list if a new one was added
-      if (bankTransfer.saveBeneficiary) {
-        fetchBeneficiaries();
-      }
-      
+      setPaymentAccountVerified(false);
+
     } catch (err) {
-      toast({
-        title: "Error",
-        description: err instanceof Error ? err.message : 'Transfer failed',
-        variant: "destructive",
-      });
-      setError(err instanceof Error ? err.message : 'Transfer failed');
+      showNotification(
+        'error',
+        'Payment Failed',
+        err instanceof Error ? err.message : 'Unable to process payment. Please check your wallet balance and try again.'
+      );
+      setError(err instanceof Error ? err.message : 'Payment failed');
     } finally {
-      setIsBankTransferLoading(false);
+      setPaymentLoading(false);
     }
   };
+
+  // Filter banks for payment
+  const filteredPaymentBanks = banks.filter(bank =>
+    bank.name.toLowerCase().includes(paymentBankSearchQuery.toLowerCase()) ||
+    bank.code.toLowerCase().includes(paymentBankSearchQuery.toLowerCase())
+  );
 
   const handleAddBill = async () => {
     try {
@@ -437,12 +450,13 @@ export function PayBillsPage() {
           autoPay: newBill.autoPay
         }),
       });
+      s
 
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to create bill');
       }
-
+      showNotification('success', 'Bill Added', 'New bill has been added successfully');
       // Refresh bills after successful creation
       await fetchBills();
       
@@ -834,103 +848,342 @@ export function PayBillsPage() {
         </Card>
 
         {/* Payment Form */}
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              {selectedBill ? `Pay ${selectedBill.description}` : 'Select a Bill to Pay'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {selectedBill ? (
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="amount">Payment Amount</Label>
-                  <Input
-                    id="amount"
-                    type="number"
-                    value={paymentAmount}
-                    onChange={(e) => setPaymentAmount(e.target.value)}
-                    step="0.01"
-                    disabled={paymentLoading}
-                  />
-                </div>
+ <Card>
+        <CardHeader>
+          <CardTitle>
+            {selectedBill ? `Pay ${selectedBill.description}` : 'Select a Bill to Pay'}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {selectedBill ? (
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="amount">Payment Amount</Label>
+                <Input
+                  id="amount"
+                  type="number"
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  step="0.01"
+                  disabled
+                />
+              </div>
 
-                <div>
-                  <Label htmlFor="payment-method">Payment Method</Label>
-                  <Select value={paymentMethod} onValueChange={setPaymentMethod} disabled={paymentLoading}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select payment method" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="wallet">Wallet Balance</SelectItem>
-                      <SelectItem value="savings">GTB Savings Account (****1234)</SelectItem>
-                      <SelectItem value="current">First Bank Current Account (****5678)</SelectItem>
-                      <SelectItem value="credit">Access Bank Credit Card (****9012)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div>
+                <Label htmlFor="payment-method">Payment Method</Label>
+                <Select value={paymentMethod} onValueChange={setPaymentMethod} disabled>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select payment method" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="wallet">Wallet Balance (Transfer)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-                <div className="p-4 bg-muted rounded-lg">
-                  <h4 className="font-medium mb-2">Payment Summary</h4>
-                  <div className="space-y-1 text-sm">
-                    <div className="flex justify-between">
-                      <span>Bill:</span>
-                      <span>{selectedBill.description}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Amount:</span>
-                      <span>₦{parseFloat(paymentAmount || '0').toLocaleString('en-NG')}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Due Date:</span>
-                      <span>{new Date(selectedBill.dueDate).toLocaleDateString()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Category:</span>
-                      <span>{selectedBill.category.name}</span>
-                    </div>
+              <div className="p-4 bg-muted rounded-lg">
+                <h4 className="font-medium mb-2">Payment Summary</h4>
+                <div className="space-y-1 text-sm">
+                  <div className="flex justify-between">
+                    <span>Bill:</span>
+                    <span>{selectedBill.description}</span>
                   </div>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="text-xs text-muted-foreground bg-blue-50 p-2 rounded">
-                    🔒 Payments are processed securely through your wallet balance
+                  <div className="flex justify-between">
+                    <span>Amount:</span>
+                    <span>₦{parseFloat(paymentAmount || '0').toLocaleString('en-NG')}</span>
                   </div>
-                  <div className="flex space-x-2">
-                    <Button 
-                      onClick={processPayment} 
-                      disabled={!paymentMethod || !paymentAmount || paymentLoading}
-                    >
-                      {paymentLoading ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Processing...
-                        </>
-                      ) : (
-                        <>
-                          <CreditCard className="h-4 w-4 mr-2" />
-                          Process Payment
-                        </>
-                      )}
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setSelectedBill(null)}
-                      disabled={paymentLoading}
-                    >
-                      Cancel
-                    </Button>
+                  <div className="flex justify-between">
+                    <span>Due Date:</span>
+                    <span>{new Date(selectedBill.dueDate).toLocaleDateString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Category:</span>
+                    <span>{selectedBill.category.name}</span>
                   </div>
                 </div>
               </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <CreditCard className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Select a bill from the list to make a payment</p>
+
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  You'll need to provide bank account details to complete this payment
+                </AlertDescription>
+              </Alert>
+
+              <div className="flex space-x-2">
+                <Button 
+                  onClick={() => setShowPaymentTransferModal(true)}
+                  disabled={!paymentMethod || !paymentAmount}
+                  className="flex-1"
+                >
+                  <Bank className="h-4 w-4 mr-2" />
+                  Enter Bank Details
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setSelectedBill(null)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <CreditCard className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>Select a bill from the list to make a payment</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* BANK TRANSFER MODAL FOR BILL PAYMENT */}
+      <Dialog open={showPaymentTransferModal} onOpenChange={setShowPaymentTransferModal}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Bank className="h-5 w-5" />
+              Bill Payment - Bank Transfer
+            </DialogTitle>
+            <DialogDescription>
+              Enter the bank account details where this bill payment should be sent
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* Beneficiaries Section */}
+            {beneficiaries.length > 0 && (
+              <div className="space-y-2">
+                <Label>Saved Beneficiaries (Optional)</Label>
+                <ScrollArea className="h-32 border rounded-lg p-2">
+                  <div className="space-y-2">
+                    {beneficiaries.map((beneficiary) => (
+                      <div
+                        key={beneficiary.id}
+                        className={`p-3 border rounded-lg cursor-pointer hover:bg-muted transition-colors ${
+                          paymentTransferData.beneficiaryId === beneficiary.id ? 'bg-primary/10 border-primary' : ''
+                        }`}
+                        onClick={() => selectBeneficiaryForPayment(beneficiary)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium">{beneficiary.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {beneficiary.accountNumber} • {beneficiary.bankName}
+                            </p>
+                          </div>
+                          {paymentTransferData.beneficiaryId === beneficiary.id && (
+                            <CheckCircle className="h-5 w-5 text-primary" />
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
               </div>
             )}
-          </CardContent>
-        </Card>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">
+                  Or enter new account details
+                </span>
+              </div>
+            </div>
+
+            {/* Bank Selection */}
+            <div className="space-y-2">
+              <Label>Bank</Label>
+              <div className="relative">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full justify-between"
+                  onClick={() => setShowPaymentBankList(!showPaymentBankList)}
+                  disabled={!!paymentTransferData.beneficiaryId}
+                >
+                  {paymentTransferData.recipientBankName || "Select Bank"}
+                  <Search className="h-4 w-4 ml-2" />
+                </Button>
+
+                {showPaymentBankList && !paymentTransferData.beneficiaryId && (
+                  <div className="absolute z-50 w-full mt-1 bg-background border rounded-lg shadow-lg">
+                    <div className="p-2">
+                      <Input
+                        placeholder="Search banks..."
+                        value={paymentBankSearchQuery}
+                        onChange={(e) => setPaymentBankSearchQuery(e.target.value)}
+                        className="mb-2"
+                      />
+                    </div>
+                    <ScrollArea className="h-64">
+                      {filteredPaymentBanks.map((bank) => (
+                        <div
+                          key={bank.code}
+                          className="px-4 py-2 hover:bg-muted cursor-pointer"
+                          onClick={() => {
+                            setPaymentTransferData(prev => ({
+                              ...prev,
+                              recipientBankCode: bank.code,
+                              recipientBankName: bank.name,
+                            }));
+                            setShowPaymentBankList(false);
+                            setPaymentBankSearchQuery("");
+                            setPaymentAccountVerified(false);
+                          }}
+                        >
+                          <p className="font-medium">{bank.name}</p>
+                          <p className="text-sm text-muted-foreground">{bank.code}</p>
+                        </div>
+                      ))}
+                    </ScrollArea>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Account Number */}
+            <div className="space-y-2">
+              <Label htmlFor="recipient-account">Account Number</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="recipient-account"
+                  placeholder="0123456789"
+                  value={paymentTransferData.recipientAccountNumber}
+                  onChange={(e) => {
+                    setPaymentTransferData(prev => ({
+                      ...prev,
+                      recipientAccountNumber: e.target.value,
+                      recipientAccountName: "",
+                    }));
+                    setPaymentAccountVerified(false);
+                  }}
+                  disabled={!!paymentTransferData.beneficiaryId}
+                  maxLength={10}
+                />
+                <Button
+                  onClick={verifyPaymentAccount}
+                  disabled={
+                    verifyingPaymentAccount || 
+                    paymentAccountVerified || 
+                    !paymentTransferData.recipientAccountNumber || 
+                    !paymentTransferData.recipientBankCode ||
+                    !!paymentTransferData.beneficiaryId
+                  }
+                >
+                  {verifyingPaymentAccount ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Verifying...
+                    </>
+                  ) : paymentAccountVerified ? (
+                    <>
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Verified
+                    </>
+                  ) : (
+                    'Verify'
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            {/* Account Name Display */}
+            {paymentTransferData.recipientAccountName && (
+              <Alert>
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <AlertDescription>
+                  <strong>Account Name:</strong> {paymentTransferData.recipientAccountName}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Payment Summary */}
+            {selectedBill && (
+              <div className="p-4 bg-muted rounded-lg space-y-2">
+                <h4 className="font-semibold">Payment Details</h4>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <span className="text-muted-foreground">Bill:</span>
+                  <span className="font-medium">{selectedBill.description}</span>
+                  
+                  <span className="text-muted-foreground">Amount:</span>
+                  <span className="font-medium">₦{(selectedBill.amount / 100).toLocaleString('en-NG')}</span>
+                  
+                  <span className="text-muted-foreground">Recipient:</span>
+                  <span className="font-medium">
+                    {paymentTransferData.recipientAccountName || 'Not verified'}
+                  </span>
+                  
+                  <span className="text-muted-foreground">Bank:</span>
+                  <span className="font-medium">
+                    {paymentTransferData.recipientBankName || 'Not selected'}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end space-x-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowPaymentTransferModal(false);
+                setPaymentTransferData({
+                  beneficiaryId: "",
+                  recipientAccountNumber: "",
+                  recipientAccountName: "",
+                  recipientBankCode: "",
+                  recipientBankName: "",
+                });
+                setPaymentAccountVerified(false);
+              }}
+              disabled={paymentLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={processPaymentWithTransfer}
+              disabled={
+                paymentLoading ||
+                (!paymentAccountVerified && !paymentTransferData.beneficiaryId) ||
+                !paymentTransferData.recipientAccountNumber ||
+                !paymentTransferData.recipientBankCode
+              }
+            >
+              {paymentLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  Complete Payment
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* NOTIFICATION MODAL */}
+      <NotificationModal
+        isOpen={notification.isOpen}
+        onClose={() => setNotification({ ...notification, isOpen: false })}
+        type={notification.type}
+        title={notification.title}
+        message={notification.message}
+      />
+
+      {/* <EnhancedToast
+        isOpen={toast.isVisible}
+        onClose={() => setToast({ ...toast, isVisible: false })}
+        type={toast.type}
+        title={toast.title}
+        message={toast.message}
+      /> */}
       </div>
     </div>
   );

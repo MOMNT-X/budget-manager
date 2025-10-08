@@ -16,6 +16,7 @@ import SpendingInsightsPage from "@/components/SpendingInsightsPage";
 import { BeneficiariesPage } from "@/components/BeneficiariesPage";
 import { FinancialGoalsPage } from "@/components/FinancialGoalsPage";
 import { RecurringExpensesPage } from "@/components/RecurringExpensesPage";
+import { Toaster } from "./components/ui/toaster";
 
 export default function App() {
   return (

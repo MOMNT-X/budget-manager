@@ -13,6 +13,7 @@ import SpendingInsightsPage from "@/components/SpendingInsightsPage";
 import { AppProvider } from "@/contexts/AppContext";
 import { mockTransactions, mockCategoryData } from "@/data/mockData";
 import { BottomNav } from "@/components/ui/bottom-nav";
+import { Toaster } from "@/components/ui/toaster";
 
 export type PageType = 'dashboard' | 'expenses' | 'transactions' | 'pay-bills' | 'wallet' | 'budget' | 'notifications' | 'spending-insights';
 
