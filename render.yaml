@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: budget-manager
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_VERSION
+        value: 20.0.0
+      - key: PORT
+        value: 10000

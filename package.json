@@ -8,6 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "start": "vite preview --port $PORT",
     "docker:build": "docker build -t budget-manager .",
     "docker:run": "docker run -p 8080:80 budget-manager"
   },
