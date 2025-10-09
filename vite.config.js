@@ -4,6 +4,15 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
+  // Add preview and server configurations for port binding
+  preview: {
+    port: parseInt(process.env.PORT || '3000'),
+    host: '0.0.0.0',
+  },
+  server: {
+    port: parseInt(process.env.PORT || '3000'),
+    host: true,
+  },
   build: {
     rollupOptions: {
       output: {
@@ -27,12 +36,11 @@ export default defineConfig({
     },
     chunkSizeWarningLimit: 1000
   },
-   resolve: {
-  alias: {
-    '@': path.resolve(__dirname, 'src'),
-    '@components': path.resolve(__dirname, 'src/components'),
-    '@utils': path.resolve(__dirname, 'src/utils'),
-  },
-}
-})
-;
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, 'src'),
+      '@components': path.resolve(__dirname, 'src/components'),
+      '@utils': path.resolve(__dirname, 'src/utils'),
+    },
+  }
+});
