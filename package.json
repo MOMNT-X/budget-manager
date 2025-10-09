@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "docker:build": "docker build -t budget-manager .",
+    "docker:run": "docker run -p 8080:80 budget-manager"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.11",
