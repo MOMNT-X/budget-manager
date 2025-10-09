@@ -4,14 +4,18 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
-  // Add preview and server configurations for port binding
   preview: {
-    port: parseInt(process.env.PORT || '3000'),
+    port: process.env.PORT ? parseInt(process.env.PORT) : 3000,
     host: '0.0.0.0',
+    allowedHosts: [
+      'budget-manager-4yji.onrender.com',
+      'localhost',
+      '*.onrender.com'
+    ]
   },
   server: {
-    port: parseInt(process.env.PORT || '3000'),
-    host: true,
+    port: process.env.PORT ? parseInt(process.env.PORT) : 3000,
+    host: true
   },
   build: {
     rollupOptions: {
