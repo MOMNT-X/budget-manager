@@ -13,6 +13,7 @@ import banks from "./banks";
 import { Avatar } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import { BASE_URL } from "@/config/api";
 
 interface Beneficiary {
   id: string;
@@ -68,8 +69,8 @@ export function BeneficiariesPage() {
     try {
       setLoading(true);
       setError("");
-      
-      const response = await fetch('http://localhost:3000/beneficiaries', {
+
+      const response = await fetch(`${BASE_URL}/beneficiaries`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
         },
@@ -108,7 +109,7 @@ export function BeneficiariesPage() {
     setAccountName("");
     
     try {
-      const response = await fetch(`http://localhost:3000/paystack/verify-account`, {
+      const response = await fetch(`${BASE_URL}/paystack/verify-account`, {
         method: "POST",
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
@@ -166,7 +167,7 @@ export function BeneficiariesPage() {
       setAddLoading(true);
       setError("");
 
-      const response = await fetch('http://localhost:3000/beneficiaries', {
+      const response = await fetch('/beneficiaries', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
@@ -218,7 +219,7 @@ export function BeneficiariesPage() {
       setDeleteLoading(id);
       setError("");
 
-      const response = await fetch(`http://localhost:3000/beneficiaries/${id}`, {
+      const response = await fetch(`${BASE_URL}/beneficiaries/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,

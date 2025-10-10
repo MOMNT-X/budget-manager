@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Pencil } from "lucide-react";
 import { Button } from "../components/ui/button";
+import { BASE_URL } from "@/config/api";
 
 
 export default function ProfilePage() {
@@ -24,7 +25,7 @@ export default function ProfilePage() {
       return;
     }
 
-    fetch("http://localhost:3000/dashboard/profile", {
+    fetch(`${BASE_URL}/dashboard/profile`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },

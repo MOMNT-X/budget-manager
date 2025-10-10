@@ -3,6 +3,7 @@ import { ArrowLeft, Eye, EyeOff, User, Mail, Lock, CreditCard, Building, CheckCi
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import banks from "../components/banks";
+import { BASE_URL } from "@/config/api";
 
 // Utility function to clear all user data
 const clearAllUserData = () => {
@@ -23,6 +24,9 @@ const clearAllUserData = () => {
   localStorage.removeItem("transactions");
   localStorage.removeItem("budget");
   localStorage.removeItem("accountData");
+
+    localStorage.removeItem("hasSeenOnboardingTour");
+  localStorage.removeItem("isNewUser");
   
   // Clear session storage as well
   sessionStorage.clear();
@@ -97,7 +101,7 @@ export default function SignupPage({ onAuthSuccess }: { onAuthSuccess?: () => vo
 
       console.log("📤 Sending signup request...", { email: requestData.email, username: requestData.username });
 
-      const res = await fetch("http://localhost:3000/auth/signup", {
+      const res = await fetch(`${BASE_URL}/auth/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestData),
@@ -126,8 +130,8 @@ export default function SignupPage({ onAuthSuccess }: { onAuthSuccess?: () => vo
 
       // Force a complete page reload to ensure fresh state
       setTimeout(() => {
-        console.log("🔄 Redirecting to layout with fresh state...");
-        window.location.href = "/layout"; // Force reload instead of navigate
+        console.log("🔄 Redirecting to wallet with fresh state...");
+        window.location.href = "/app/wallet"; // Force reload instead of navigate
       }, 2000);
 
     } catch (err: any) {

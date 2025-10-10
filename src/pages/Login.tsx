@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { BASE_URL } from "@/config/api";
 
 // Utility function to clear all user data
 const clearAllUserData = () => {
@@ -58,7 +59,7 @@ export default function LoginPage({ onAuthSuccess }: { onAuthSuccess?: () => voi
 
       console.log("📤 Sending login request for:", formData.email);
 
-      const res = await fetch("http://localhost:3000/auth/login", {
+      const res = await fetch(`${BASE_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),

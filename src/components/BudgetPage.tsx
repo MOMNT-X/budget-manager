@@ -13,6 +13,7 @@ import { Checkbox } from "./ui/checkbox";
 import { Plus, Target, TrendingUp, TrendingDown, Edit, Trash2, AlertTriangle, CheckCircle, Loader2, Calendar } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { Alert, AlertDescription } from "./ui/alert";
+import { BASE_URL } from "@/config/api";
 
 interface Budget {
   id: string;
@@ -112,7 +113,7 @@ export function BudgetPage() {
     '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#ffeaa7', 
     '#dda0dd', '#ff7675', '#74b9ff', '#00b894', '#fdcb6e'
   ];
-const api = 'http://localhost:3000';
+const api = BASE_URL;
   useEffect(() => {
     fetchData();
   }, []);

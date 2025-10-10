@@ -7,7 +7,7 @@ import { Label } from "./ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
-import { confirm } from "@/config/api";
+import { BASE_URL, confirm } from "@/config/api";
 import { Skeleton } from "./ui/skeleton";
 import { 
   Wallet,  
@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { Alert, AlertDescription } from "./ui/alert";
 import { toast } from "sonner";
+import OnboardingTour from "@components/OnBoardingTour";
 
 interface WalletData {
   balance: number;
@@ -84,7 +85,7 @@ export function WalletPage() {
   const [payCategory, setPayCategory] = useState("");
 
   // API calls
-  const api = import.meta.env.VITE_API_URL || "http://localhost:3000";
+  const api = import.meta.env.VITE_API_URL || BASE_URL;
   const fetchWalletBalance = async () => {
     setLoading(prev => ({ ...prev, wallet: true }));
     try {
@@ -434,20 +435,37 @@ try {
       </CardContent>
     </Card>
   );
+  function TransactionConfirmation() {
+  const [showConfirmationModal, setShowConfirmationModal] = useState(false);
+
+  useEffect(() => {
+    if (showConfirmationModal) {
+      const timer = setTimeout(() => {
+        setShowConfirmationModal(false);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [showConfirmationModal]);
+
+  return (
+    <>
+      {showConfirmationModal && (
+        <Alert className="bg-green-50 text-green-700 border-green-200">
+          <CheckCircle2 className="h-5 w-5 text-green-500" />
+          <AlertDescription>Transaction confirmed successfully!</AlertDescription>
+        </Alert>
+      )}
+    </>
+  );
+}
+
 
   return (
     <div className="space-y-6">
-      {showConfirmationModal && (
-  <div className="modal">
-    <div className="modal-content">
-      <h3> <CheckCircle2 className="h-5 w-5 text-green-500"/> Transaction Confirmed</h3>
-      <p>Your deposit has been successfully verified.</p>
-      <Button onClick={() => setShowConfirmationModal(false)}>Close</Button>
-    </div>
-  </div>
-)}
       {/* Header */}
+      <TransactionConfirmation />
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <OnboardingTour />
         <div>
           <h2 className="text-2xl font-bold">My Wallet</h2>
           <p className="text-muted-foreground">Manage your funds, make payments and track transactions</p>

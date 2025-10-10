@@ -1,4 +1,5 @@
 'use client'
+import { BASE_URL } from '@/config/api';
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { toast } from 'sonner';
 
@@ -147,7 +148,7 @@ export function AppProvider({ children }: AppProviderProps) {
   const updateLastFetched = (key: keyof typeof lastFetched) => {
     setLastFetched(prev => ({ ...prev, [key]: Date.now() }));
   };
-const api = 'http://localhost:3000'
+const api = BASE_URL;
   const getAuthHeaders = () => ({
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${localStorage.getItem('access_token')}`

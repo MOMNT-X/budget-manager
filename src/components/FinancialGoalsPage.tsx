@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/components/ui/use-toast";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { format } from "date-fns";
+import { BASE_URL } from "@/config/api";
 
 interface Goal {
   id: string;
@@ -101,7 +102,7 @@ export function FinancialGoalsPage() {
     fetchData();
   }, []);
 
-  const api = import.meta.env.VITE_API_URL || "http://localhost:3000";
+  const api = import.meta.env.VITE_BASE_API_URL || BASE_URL;
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -129,7 +130,7 @@ export function FinancialGoalsPage() {
       setGoals(goalsWithProgress);
       
       // Fetch categories
-      const categoriesResponse = await fetch('http://localhost:3000/categories', {
+      const categoriesResponse = await fetch(`${BASE_URL}/categories`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
         },
@@ -166,7 +167,7 @@ export function FinancialGoalsPage() {
       setAddLoading(true);
       setError("");
 
-      const response = await fetch('http://localhost:3000/financial-goals', {
+      const response = await fetch(`${BASE_URL}/financial-goals`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
@@ -225,7 +226,7 @@ export function FinancialGoalsPage() {
       setContributeLoading(true);
       setError("");
 
-      const response = await fetch(`http://localhost:3000/financial-goals/${selectedGoal.id}/contribute`, {
+      const response = await fetch(`${BASE_URL}/financial-goals/${selectedGoal.id}/contribute`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
@@ -267,8 +268,8 @@ export function FinancialGoalsPage() {
     try {
       setDeleteLoading(id);
       setError("");
-      
-      const response = await fetch(`http://localhost:3000/financial-goals/${id}`, {
+
+      const response = await fetch(`${BASE_URL}/financial-goals/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
