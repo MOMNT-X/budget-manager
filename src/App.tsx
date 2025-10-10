@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
 import SignupPage from "@/pages/Signup";
 import LoginPage from "@/pages/Login";
@@ -17,13 +17,14 @@ import { BeneficiariesPage } from "@/components/BeneficiariesPage";
 import { FinancialGoalsPage } from "@/components/FinancialGoalsPage";
 import { RecurringExpensesPage } from "@/components/RecurringExpensesPage";
 import { Toaster } from "./components/ui/toaster";
+import LandingPage from "@/pages/LandingPage";
 
 export default function App() {
   return (
     <Router>
       <Routes>
-        {/* Default Route */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        {/* Default Route - Landing */}
+        <Route path="/" element={<LandingPage />} />
 
         {/* Public Routes */}
         <Route path="/signup" element={<SignupPage />} />
