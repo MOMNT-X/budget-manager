@@ -196,3 +196,8 @@
 html {
   font-size: var(--font-size);
 }
+
+/* Smooth scroll for in-page anchor links */
+html, body {
+  scroll-behavior: smooth;
+}
