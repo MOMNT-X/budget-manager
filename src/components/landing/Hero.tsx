@@ -41,11 +41,11 @@ export default function Hero() {
             <div className="mt-4 grid grid-cols-3 gap-3 text-center text-xs">
               <div className="rounded-lg border p-3">
                 <p className="text-muted-foreground">Monthly Spend</p>
-                <p className="mt-1 text-lg font-semibold">$2,450</p>
+                <p className="mt-1 text-lg font-semibold">₦250,450</p>
               </div>
               <div className="rounded-lg border p-3">
                 <p className="text-muted-foreground">Saved</p>
-                <p className="mt-1 text-lg font-semibold text-emerald-600">$820</p>
+                <p className="mt-1 text-lg font-semibold text-emerald-600">₦10,050</p>
               </div>
               <div className="rounded-lg border p-3">
                 <p className="text-muted-foreground">Alerts</p>

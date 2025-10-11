@@ -456,9 +456,6 @@ const handlePayBill = (bill: Bill) => {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to create bill');
       }
-      showNotification('success', 'Bill Added', 'New bill has been added successfully');
-      // Refresh bills after successful creation
-      await fetchBills();
       
       // Reset form and close modal
       setNewBill({
@@ -471,9 +468,16 @@ const handlePayBill = (bill: Bill) => {
       setShowAddBillModal(false);
 
     } catch (err) {
+
       setError(err instanceof Error ? err.message : 'Failed to create bill');
+      showNotification('error', 'Error', err instanceof Error ? err.message : 'Failed to create bill');
     } finally {
       setAddBillLoading(false);
+      setShowAddBillModal(false);
+      showNotification('success', 'Bill Added', 'New bill has been added successfully');
+      resetAddBillForm();
+      // Refresh bills after successful creation
+      await fetchBills();
     }
   };
 

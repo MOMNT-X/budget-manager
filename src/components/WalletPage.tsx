@@ -465,7 +465,6 @@ try {
       {/* Header */}
       <TransactionConfirmation />
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <OnboardingTour />
         <div>
           <h2 className="text-2xl font-bold">My Wallet</h2>
           <p className="text-muted-foreground">Manage your funds, make payments and track transactions</p>
