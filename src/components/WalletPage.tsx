@@ -463,6 +463,7 @@ try {
   return (
     <div className="space-y-6">
       {/* Header */}
+      <OnboardingTour />
       <TransactionConfirmation />
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>

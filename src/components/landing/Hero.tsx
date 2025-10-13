@@ -37,10 +37,10 @@ export default function Hero() {
           <div className="absolute -left-6 -top-6 h-24 w-24 rounded-full bg-blue-500/20 blur-2xl" />
           <div className="absolute -right-8 bottom-10 h-24 w-24 rounded-full bg-purple-500/20 blur-2xl" />
           <div className="relative rounded-2xl border bg-card p-4 shadow-xl backdrop-blur">
-            <img src="/image/View%20of%20a%20mountain%20lake%20with%20a%20full%20moon%20in%20the%20sky.jpg" alt="Smart Budget dashboard" className="aspect-video w-full rounded-lg object-cover" />
+            <img src="/image/Screenshot (99).png" alt="Smart Budget dashboard" className="aspect-video w-full rounded-lg object-cover" />
             <div className="mt-4 grid grid-cols-3 gap-3 text-center text-xs">
               <div className="rounded-lg border p-3">
-                <p className="text-muted-foreground">Monthly Spend</p>
+                <p className="text-muted-foreground">Monthly Spend Estimate</p>
                 <p className="mt-1 text-lg font-semibold">₦250,450</p>
               </div>
               <div className="rounded-lg border p-3">

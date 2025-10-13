@@ -4,22 +4,23 @@ const sections = [
   {
     title: "Budget Control Dashboard",
     desc: "Get an instant overview of income vs expenses with clear insights.",
-    image: "/image/View%20of%20a%20mountain%20lake%20with%20a%20full%20moon%20in%20the%20sky.jpg",
+    image: "/image/Screenshot (95).png",
   },
   {
     title: "Expense Categorization",
     desc: "Real-time analytics with category-level spending trends.",
-    image: "/image/View%20of%20a%20mountain%20lake%20with%20a%20full%20moon%20in%20the%20sky.jpg",
+    image: "/image/Screenshot (97).png",
+    
   },
   {
     title: "Goal Tracking",
     desc: "Create saving goals, visualize milestones, and automate contributions.",
-    image: "/image/View%20of%20a%20mountain%20lake%20with%20a%20full%20moon%20in%20the%20sky.jpg",
+    image: "/image/Screenshot (96).png",
   },
   {
     title: "Smart Alerts & Notifications",
     desc: "Stay proactive with reminders and intelligent alerts.",
-    image: "/image/View%20of%20a%20mountain%20lake%20with%20a%20full%20moon%20in%20the%20sky.jpg",
+    image: "/image/Screenshot (98).png",
   },
 ];
 

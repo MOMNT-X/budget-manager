@@ -113,13 +113,14 @@ export function Dashboard() {
     monthlyExpenses,
     monthlyBudget,
     percentageChange,
+    remainingBudget,
   } = data;
 
 const walletBalanceNaira = walletBalance / 100;
 const monthlyExpensesNaira = monthlyExpenses / 100;
-const remainingBudget = monthlyBudget - monthlyExpensesNaira;
+const remainingBudgetNaira = remainingBudget/100;
 const budgetUsed = (monthlyExpensesNaira / monthlyBudget) * 100;
-const isOverBudget = monthlyExpensesNaira > monthlyBudget;
+const isOverBudget = monthlyExpensesNaira > monthlyBudget
 
 
   return (
@@ -199,7 +200,7 @@ const isOverBudget = monthlyExpensesNaira > monthlyBudget;
               }`}
             >
               {isOverBudget ? "-" : ""}
-              {formatNaira(Math.abs(remainingBudget))}
+              {formatNaira(Math.abs(remainingBudgetNaira))}
             </div>
             <p className="text-xs text-muted-foreground">
               {isOverBudget ? "exceeded by" : "left to spend"}

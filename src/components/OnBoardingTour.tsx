@@ -33,6 +33,13 @@ const onboardingSteps: OnboardingStep[] = [
     action: "Navigate to 'Budgets' to get started",
   },
   {
+    id: 'pay-bills',
+    title: "Pay Bills Easily",
+    description: "Use the 'Pay Bills' tab to manage and pay your daily, weekly and monthly bills directly from your wallet. Set up auto-pay to never miss a due date.",
+    icon: <ArrowRight className="w-8 h-8 text-pink-500" />,
+    action: "Go to 'Bills' to set up your first payment",
+  },
+  {
     id: "notifications",
     title: "Stay Informed",
     description: "Click the bell icon in the top right to view transaction alerts, budget warnings, and bill reminders. Never miss an important update!",
