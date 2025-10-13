@@ -19,7 +19,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { NotificationModal, EnhancedToast } from "@/components/notification-modal";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import { BASE_URL } from "@/config/api";
+import { BASE_URL, sendBillPaidNotification } from "@/config/api";
 
 interface Category {
   id: string;
@@ -126,6 +126,9 @@ export function PayBillsPage() {
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("pay-bills");
   const isMobile = useMediaQuery("(max-width: 768px)");
+  const [billSearch, setBillSearch] = useState("");
+  const [billPage, setBillPage] = useState(1);
+  const billsPerPage = 15;
   
   // Add Bill Modal States
   const [showAddBillModal, setShowAddBillModal] = useState(false);
@@ -136,6 +139,17 @@ export function PayBillsPage() {
     description: '',
     dueDate: '',
     autoPay: false
+  });
+  
+  // AutoPay recipient capture for cron use
+  const [autoPayRecipient, setAutoPayRecipient] = useState({
+    recipientAccountNumber: "",
+    recipientAccountName: "",
+    recipientBankCode: "",
+    recipientBankName: "",
+    verified: false,
+    showBankList: false,
+    bankSearch: "",
   });
 
     const [showPaymentTransferModal, setShowPaymentTransferModal] = useState(false);
@@ -396,6 +410,9 @@ const handlePayBill = (bill: Bill) => {
         `Your bill payment of ₦${(selectedBill.amount / 100).toLocaleString('en-NG')} for ${selectedBill.description} has been initiated. Transfer to ${paymentTransferData.recipientAccountName} is being processed.`
       );
 
+      // Notify backend (non-blocking)
+      try { await sendBillPaidNotification(selectedBill); } catch {}
+
       // Refresh bills
       await fetchBills();
       
@@ -447,10 +464,16 @@ const handlePayBill = (bill: Bill) => {
           amount: parseFloat(newBill.amount),
           description: newBill.description,
           dueDate: newBill.dueDate,
-          autoPay: newBill.autoPay
+          autoPay: newBill.autoPay,
+          ...(newBill.autoPay ? {
+            recipientAccountNumber: autoPayRecipient.recipientAccountNumber,
+            recipientBankCode: autoPayRecipient.recipientBankCode,
+            recipientBankName: autoPayRecipient.recipientBankName,
+            recipientAccountName: autoPayRecipient.recipientAccountName,
+          } : {})
         }),
       });
-      s
+      
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -597,7 +620,9 @@ const handlePayBill = (bill: Bill) => {
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
-                      {categories.map((category) => {
+                      {categories
+                        .filter((category) => (category.budgetLimit || 0) > 0)
+                        .map((category) => {
                         const IconComponent = getIconForCategory(category.name, category.icon);
                         return (
                           <SelectItem key={category.id} value={category.id}>
@@ -661,6 +686,114 @@ const handlePayBill = (bill: Bill) => {
                   Enable Auto-Pay (automatically pay when due)
                 </Label>
               </div>
+              {newBill.autoPay && (
+                <div className="space-y-3 border rounded-lg p-3">
+                  <p className="text-sm font-medium">Recipient Bank Account Details</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2 col-span-2">
+                      <Label>Bank</Label>
+                      <div className="relative">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full justify-between"
+                          onClick={() => setAutoPayRecipient(prev => ({ ...prev, showBankList: !prev.showBankList }))}
+                        >
+                          {autoPayRecipient.recipientBankName || "Select Bank"}
+                          <Search className="h-4 w-4 ml-2" />
+                        </Button>
+                        {autoPayRecipient.showBankList && (
+                          <div className="absolute z-50 w-full mt-1 bg-background border rounded-lg shadow-lg">
+                            <div className="p-2">
+                              <Input
+                                placeholder="Search banks..."
+                                value={autoPayRecipient.bankSearch}
+                                onChange={(e) => setAutoPayRecipient(prev => ({ ...prev, bankSearch: e.target.value }))}
+                                className="mb-2"
+                              />
+                            </div>
+                            <ScrollArea className="h-64">
+                              {banks
+                                .filter(b => b.name.toLowerCase().includes((autoPayRecipient.bankSearch||'').toLowerCase()) || b.code.toLowerCase().includes((autoPayRecipient.bankSearch||'').toLowerCase()))
+                                .map((bank) => (
+                                <div
+                                  key={bank.code}
+                                  className="px-4 py-2 hover:bg-muted cursor-pointer"
+                                  onClick={() => {
+                                    setAutoPayRecipient(prev => ({
+                                      ...prev,
+                                      recipientBankCode: bank.code,
+                                      recipientBankName: bank.name,
+                                      showBankList: false,
+                                      bankSearch: "",
+                                      verified: false,
+                                      recipientAccountName: "",
+                                    }));
+                                  }}
+                                >
+                                  <p className="font-medium">{bank.name}</p>
+                                  <p className="text-sm text-muted-foreground">{bank.code}</p>
+                                </div>
+                              ))}
+                            </ScrollArea>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="space-y-2 col-span-2">
+                      <Label htmlFor="auto-account">Account Number</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          id="auto-account"
+                          placeholder="0123456789"
+                          value={autoPayRecipient.recipientAccountNumber}
+                          onChange={(e) => setAutoPayRecipient(prev => ({ ...prev, recipientAccountNumber: e.target.value, recipientAccountName: '', verified: false }))}
+                          maxLength={10}
+                        />
+                        <Button
+                          type="button"
+                          onClick={async () => {
+                            if (!autoPayRecipient.recipientAccountNumber || !autoPayRecipient.recipientBankCode) {
+                              showNotification('error', 'Validation Error', 'Enter account number and select bank');
+                              return;
+                            }
+                            try {
+                              setVerifyingPaymentAccount(true);
+                              const response = await fetch(`${BASE_URL}/paystack/verify-account`, {
+                                method: 'POST',
+                                headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}`, 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ accountNumber: autoPayRecipient.recipientAccountNumber, bankCode: autoPayRecipient.recipientBankCode })
+                              });
+                              const data = await response.json();
+                              if (!response.ok) throw new Error(data?.message || 'Verification failed');
+                              setAutoPayRecipient(prev => ({ ...prev, recipientAccountName: data.account_name, verified: true }));
+                              showNotification('success', 'Account Verified', `Account belongs to ${data.account_name}`);
+                            } catch (err) {
+                              showNotification('error', 'Verification Failed', err instanceof Error ? err.message : 'Verification failed');
+                              setAutoPayRecipient(prev => ({ ...prev, verified: false }));
+                            } finally {
+                              setVerifyingPaymentAccount(false);
+                            }
+                          }}
+                          disabled={verifyingPaymentAccount || autoPayRecipient.verified}
+                        >
+                          {verifyingPaymentAccount ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />Verifying...</>) : (autoPayRecipient.verified ? (<><CheckCircle className="h-4 w-4 mr-2" />Verified</>) : 'Verify')}
+                        </Button>
+                      </div>
+                    </div>
+                    {autoPayRecipient.recipientAccountName && (
+                      <div className="col-span-2">
+                        <Alert>
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                          <AlertDescription>
+                            <strong>Account Name:</strong> {autoPayRecipient.recipientAccountName}
+                          </AlertDescription>
+                        </Alert>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Budget Warning */}
               {newBill.categoryId && newBill.amount && (
@@ -716,7 +849,17 @@ const handlePayBill = (bill: Bill) => {
                   !newBill.categoryId || 
                   !newBill.amount || 
                   !newBill.description || 
-                  !newBill.dueDate
+                  !newBill.dueDate ||
+                  // Enforce budget limit
+                  (() => {
+                    const category = categories.find(c => c.id === newBill.categoryId);
+                    const billAmount = parseFloat(newBill.amount || '0') * 100;
+                    const currentSpent = category?.spent || 0;
+                    const budgetLimit = category?.budgetLimit || 0;
+                    return budgetLimit > 0 && (currentSpent + billAmount) > budgetLimit;
+                  })() ||
+                  // Require verified recipient for autopay
+                  (newBill.autoPay && !autoPayRecipient.verified)
                 }
               >
                 {addBillLoading ? (
@@ -797,7 +940,16 @@ const handlePayBill = (bill: Bill) => {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>All Bills</CardTitle>
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle>All Bills</CardTitle>
+              <div className="relative w-60">
+                <Input
+                  placeholder="Search bills..."
+                  value={billSearch}
+                  onChange={(e) => setBillSearch(e.target.value)}
+                />
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             {bills.length === 0 ? (
@@ -807,7 +959,17 @@ const handlePayBill = (bill: Bill) => {
               </div>
             ) : (
               <div className="space-y-4">
-                {bills.map((bill) => {
+                {bills
+                  .filter(b => {
+                    const q = billSearch.toLowerCase();
+                    return (
+                      b.description.toLowerCase().includes(q) ||
+                      b.category.name.toLowerCase().includes(q) ||
+                      b.billStatus.toLowerCase().includes(q)
+                    );
+                  })
+                  .slice((billPage - 1) * 15, billPage * 15)
+                  .map((bill) => {
                   const IconComponent = getIconForCategory(bill.category.name, bill.category.icon);
                   const StatusIcon = getStatusIcon(bill.billStatus, bill.dueDate);
                   const statusText = getStatusText(bill.billStatus, bill.dueDate);
@@ -845,7 +1007,39 @@ const handlePayBill = (bill: Bill) => {
                       </div>
                     </div>
                   );
-                })}
+                })
+                {/* Pagination Controls */}
+                <div className="flex items-center justify-between pt-2">
+                  <p className="text-sm text-muted-foreground">
+                    Showing {((billPage - 1) * 15) + 1} - {Math.min(billPage * 15, bills.filter(b => {
+                      const q = billSearch.toLowerCase();
+                      return (
+                        b.description.toLowerCase().includes(q) ||
+                        b.category.name.toLowerCase().includes(q) ||
+                        b.billStatus.toLowerCase().includes(q)
+                      );
+                    }).length)} of {bills.filter(b => {
+                      const q = billSearch.toLowerCase();
+                      return (
+                        b.description.toLowerCase().includes(q) ||
+                        b.category.name.toLowerCase().includes(q) ||
+                        b.billStatus.toLowerCase().includes(q)
+                      );
+                    }).length}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setBillPage(p => Math.max(1, p - 1))} disabled={billPage === 1}>Previous</Button>
+                    <span className="text-sm">Page {billPage}</span>
+                    <Button variant="outline" size="sm" onClick={() => setBillPage(p => p + 1)} disabled={billSearch ? (billPage * 15) >= bills.filter(b => {
+                      const q = billSearch.toLowerCase();
+                      return (
+                        b.description.toLowerCase().includes(q) ||
+                        b.category.name.toLowerCase().includes(q) ||
+                        b.billStatus.toLowerCase().includes(q)
+                      );
+                    }).length : (billPage * 15) >= bills.length}>Next</Button>
+                  </div>
+                </div>
               </div>
             )}
           </CardContent>

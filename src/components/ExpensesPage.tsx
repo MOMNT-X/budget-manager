@@ -86,7 +86,7 @@ export function ExpensesPage() {
       }
       
       console.log('Fetching with filters:', filters);
-      const res = await getExpensesSummary();
+      const res = await getExpensesSummary(filters);
       console.log('API Response:', res);
       setSummary(res);
       setError(null);
