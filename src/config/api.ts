@@ -118,8 +118,25 @@ export const createTransaction = async (payload: any) => {
   return data;
 };
 
-export const getTransactions = async () => {
-  const res = await fetch(`${BASE_URL}/transactions`, {
+export const getTransactions = async (params?: {
+  type?: string;
+  category?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}) => {
+  const query = new URLSearchParams();
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        query.set(key, String(value));
+      }
+    });
+  }
+  const url = `${BASE_URL}/transactions${query.toString() ? `?${query.toString()}` : ''}`;
+  const res = await fetch(url, {
     headers: { ...authHeaders(), "Content-Type": "application/json" },
   });
   const data = await res.json();
@@ -244,8 +261,19 @@ export const getExpenses = async () => {
   return data;
 };
 
-export const getExpensesSummary = async () => {
-  const res = await fetch(`${BASE_URL}/expenses/summary`, {
+export const getExpensesSummary = async (filters?: {
+  month?: number;
+  week?: number; // 1 => last 7 days
+  categoryId?: string;
+}) => {
+  const query = new URLSearchParams();
+  if (filters) {
+    if (filters.month) query.set('month', String(filters.month));
+    if (filters.week) query.set('week', String(filters.week));
+    if (filters.categoryId) query.set('categoryId', filters.categoryId);
+  }
+  const url = `${BASE_URL}/expenses/summary${query.toString() ? `?${query.toString()}` : ''}`;
+  const res = await fetch(url, {
     headers: { ...authHeaders(), "Content-Type": "application/json" },
   });
   const data = await res.json();
@@ -503,4 +531,96 @@ export const getBankList = async () => {
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || "Failed to fetch bank list");
   return data;
+};
+
+// ===== NOTIFICATIONS =====
+export const sendEmailNotification = async (
+  to: string,
+  subject: string,
+  html: string
+) => {
+  return await request(
+    "/notifications/email",
+    {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ to, subject, html }),
+    },
+    "Failed to send email"
+  );
+};
+
+export const sendDiscordNotification = async (
+  message: string,
+  embed?: any
+) => {
+  return await request(
+    "/notifications/discord",
+    {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ message, embed }),
+    },
+    "Failed to send discord notification"
+  );
+};
+
+export const sendTransactionNotification = async (transaction: any) => {
+  return await request(
+    "/notifications/transaction",
+    {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ transaction }),
+    },
+    "Failed to send transaction notification"
+  );
+};
+
+export const sendBudgetCreatedNotification = async (budget: any) => {
+  return await request(
+    "/notifications/budget-created",
+    {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ budget }),
+    },
+    "Failed to send budget created notification"
+  );
+};
+
+export const sendBudgetThresholdAlert = async (budget: any, percentUsed: number) => {
+  return await request(
+    "/notifications/budget-threshold",
+    {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ budget, percentUsed }),
+    },
+    "Failed to send budget threshold alert"
+  );
+};
+
+export const sendBillPaidNotification = async (bill: any) => {
+  return await request(
+    "/notifications/bill-paid",
+    {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ bill }),
+    },
+    "Failed to send bill paid notification"
+  );
+};
+
+export const sendBillReminderNotification = async (bill: any) => {
+  return await request(
+    "/notifications/bill-reminder",
+    {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ bill }),
+    },
+    "Failed to send bill reminder notification"
+  );
 };

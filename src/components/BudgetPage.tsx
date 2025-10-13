@@ -13,7 +13,7 @@ import { Checkbox } from "./ui/checkbox";
 import { Plus, Target, TrendingUp, TrendingDown, Edit, Trash2, AlertTriangle, CheckCircle, Loader2, Calendar } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { Alert, AlertDescription } from "./ui/alert";
-import { BASE_URL } from "@/config/api";
+import { BASE_URL, sendBudgetCreatedNotification, sendBudgetThresholdAlert } from "@/config/api";
 
 interface Budget {
   id: string;
@@ -108,6 +108,11 @@ export function BudgetPage() {
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedColor, setSelectedColor] = useState("#4ecdc4");
+  const [showSuccessModal, setShowSuccessModal] = useState<{
+    open: boolean;
+    title: string;
+    message: string;
+  }>({ open: false, title: '', message: '' });
 
   const colorOptions = [
     '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#ffeaa7', 
@@ -191,6 +196,16 @@ const fetchData = async () => {
       resetForm();
       setIsDialogOpen(false);
 
+      // Show success modal
+      setShowSuccessModal({
+        open: true,
+        title: 'Budget Created',
+        message: 'Your new budget has been created successfully.'
+      });
+
+      // Notify backend (non-blocking)
+      try { await sendBudgetCreatedNotification(await response.json()); } catch {}
+
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create budget');
     } finally {
@@ -237,6 +252,16 @@ const fetchData = async () => {
   const totalSpent = summary?.totalSpent || 0;
   const totalRemaining = (totalAllocated - (totalSpent)/100) || 0;
   const budgetUtilization = totalAllocated > 0 ? (totalSpent / totalAllocated)  : 0;
+
+  useEffect(() => {
+    // Notify if nearing zero balance: utilization >= 0.9
+    if (summary && totalAllocated > 0) {
+      const percentUsed = Math.min(100, (totalSpent / totalAllocated) * 100);
+      if (percentUsed >= 90) {
+        try { sendBudgetThresholdAlert(summary, percentUsed); } catch {}
+      }
+    }
+  }, [summary]);
 
   const overBudgetCategories = budgetsWithSpending.filter(budget => budget.spent > budget.amount);
   const underBudgetCategories = budgetsWithSpending.filter(budget => budget.spent < budget.amount * 0.8);
@@ -705,6 +730,23 @@ const fetchData = async () => {
           </div>
         </TabsContent>
       </Tabs>
+
+      {showSuccessModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+          <div className="bg-white rounded-lg p-6 max-w-sm w-full shadow-lg">
+            <h3 className="text-lg font-semibold mb-2">{showSuccessModal.title}</h3>
+            <p className="text-sm text-muted-foreground mb-4">{showSuccessModal.message}</p>
+            <div className="text-right">
+              <button
+                className="px-4 py-2 text-white bg-blue-600 rounded"
+                onClick={() => setShowSuccessModal({ open: false, title: '', message: '' })}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

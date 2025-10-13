@@ -7,7 +7,7 @@ import { Label } from "./ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
-import { BASE_URL, confirm } from "@/config/api";
+import { BASE_URL, confirm, sendTransactionNotification } from "@/config/api";
 import { Skeleton } from "./ui/skeleton";
 import { 
   Wallet,  
@@ -83,6 +83,8 @@ export function WalletPage() {
   const [payAmount, setPayAmount] = useState("");
   const [payDescription, setPayDescription] = useState("");
   const [payCategory, setPayCategory] = useState("");
+  const [depositModalOpen, setDepositModalOpen] = useState(false);
+  const [depositAuthUrl, setDepositAuthUrl] = useState<string | null>(null);
 
   // API calls
   const api = import.meta.env.VITE_API_URL || BASE_URL;
@@ -177,9 +179,10 @@ const handleRefresh = async () => {
 
   if (reference) {
     try {
-      await confirm(); // confirm uses reference internally
+      const confirmation = await confirm(); // confirm uses reference internally
       localStorage.removeItem("depositRef");
       setShowConfirmationModal(true); // ✅ trigger modal
+      try { await sendTransactionNotification(confirmation?.transaction || { type: 'DEPOSIT', amount: Number(depositAmount) * 100, description: 'Wallet deposit', timestamp: new Date().toISOString() }); } catch {}
     } catch (error) {
       console.warn("Confirmation failed:", error.message);
       // Optional: show fallback toast or silently ignore
@@ -225,7 +228,8 @@ try {
   localStorage.setItem("depositRef", result.reference);
 
   if (result.authorizationUrl) {
-    window.open(result.authorizationUrl, "_blank");
+    setDepositAuthUrl(result.authorizationUrl);
+    setDepositModalOpen(true);
   }
 
 } catch (error) {
@@ -267,6 +271,7 @@ try {
         setWithdrawAmount("");
         await fetchWalletBalance();
         await fetchTransactions();
+        try { await sendTransactionNotification(result?.transaction || { type: 'WITHDRAWAL', amount: Number(withdrawAmount) * 100, description: 'Wallet withdrawal', timestamp: new Date().toISOString() }); } catch {}
       }
     } catch (error) {
       toast.error("Failed to process withdrawal");
@@ -312,6 +317,7 @@ try {
       setPayCategory("");
       await fetchWalletBalance();
       await fetchTransactions();
+      try { await sendTransactionNotification(result?.transaction || { type: 'EXPENSE', amount: Number(payAmount) * 100, description: payDescription, categoryId: payCategory, timestamp: new Date().toISOString() }); } catch {}
     } catch (error: any) {
       toast.error(error?.message || "Failed to process payment");
     } finally {
@@ -572,6 +578,28 @@ try {
                       >
                         {loading.action ? "Processing..." : "Continue to Payment"}
                       </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+                {/* Paystack Webview Modal */}
+                <Dialog open={depositModalOpen} onOpenChange={setDepositModalOpen}>
+                  <DialogContent className="sm:max-w-[720px] h-[80vh]">
+                    <DialogHeader>
+                      <DialogTitle>Complete Deposit</DialogTitle>
+                      <DialogDescription>Secure Paystack checkout inside the app.</DialogDescription>
+                    </DialogHeader>
+                    <div className="h-full">
+                      {depositAuthUrl ? (
+                        <iframe src={depositAuthUrl} title="Paystack" className="w-full h-[60vh] border rounded" />
+                      ) : (
+                        <div className="text-sm text-muted-foreground">Awaiting authorization URL...</div>
+                      )}
+                      {depositAuthUrl && (
+                        <div className="mt-3 flex justify-between">
+                          <Button variant="outline" onClick={() => window.open(depositAuthUrl!, '_blank')}>Open in new tab</Button>
+                          <Button onClick={() => setDepositModalOpen(false)}>Done</Button>
+                        </div>
+                      )}
                     </div>
                   </DialogContent>
                 </Dialog>

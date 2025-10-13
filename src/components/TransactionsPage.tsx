@@ -49,7 +49,7 @@ export function TransactionsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [filterCategory, setFilterCategory] = useState("all");
-  const [sortBy, setSortBy] = useState("date");
+  const [sortBy, setSortBy] = useState("timestamp");
   const [sortOrder, setSortOrder] = useState("desc");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 50;
@@ -58,14 +58,17 @@ export function TransactionsPage() {
   const fetchTransactions = useCallback(async () => {
     try {
       setLoading(true);
-      const filters = {};
-      
-      if (filterType !== "all") {
-        filters.type = filterType;
-      }
-      
-      const data = await getTransactions();
-      setTransactions(data);
+      const params: any = {
+        sortBy,
+        sortOrder,
+      };
+      if (filterType !== "all") params.type = filterType.toUpperCase();
+      if (filterCategory !== "all") params.category = filterCategory;
+      if (searchTerm) params.search = searchTerm;
+
+      const res = await getTransactions(params);
+      const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : res?.items || [];
+      setTransactions(list);
       setError(null);
     } catch (err) {
       console.error('Error fetching transactions:', err);
@@ -73,7 +76,7 @@ export function TransactionsPage() {
     } finally {
       setLoading(false);
     }
-  }, [filterType]);
+  }, [filterType, filterCategory, sortBy, sortOrder, searchTerm]);
 
   useEffect(() => {
     fetchTransactions();
@@ -84,7 +87,8 @@ export function TransactionsPage() {
     .filter((transaction: Transaction) => {
       const matchesSearch = transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            transaction.category.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesType = filterType === "all" || transaction.type === filterType;
+      const t = asOriginalType(transaction);
+      const matchesType = filterType === "all" || (filterType === 'deposit' ? t === 'DEPOSIT' : t === 'EXPENSE');
       const matchesCategory = filterCategory === "all" || transaction.category === filterCategory;
       
       return matchesSearch && matchesType && matchesCategory;
@@ -92,32 +96,35 @@ export function TransactionsPage() {
     .sort((a: Transaction, b: Transaction) => {
       let aValue: any = a[sortBy as keyof Transaction];
       let bValue: any = b[sortBy as keyof Transaction];
-      
-      if (sortBy === "date") {
-        aValue = new Date(aValue);
-        bValue = new Date(bValue);
+      if (sortBy === 'timestamp') {
+        aValue = new Date(a.timestamp).getTime();
+        bValue = new Date(b.timestamp).getTime();
+      } else if (sortBy === 'amount') {
+        aValue = Number(a.amount);
+        bValue = Number(b.amount);
+      } else if (typeof aValue === 'string' && typeof bValue === 'string') {
+        aValue = aValue.toLowerCase();
+        bValue = bValue.toLowerCase();
       }
-      
-      if (sortBy === "amount") {
-        aValue = parseFloat(aValue);
-        bValue = parseFloat(bValue);
-      }
-      
-      if (sortOrder === "asc") {
-        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
-      } else {
-        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
-      }
+      const result = aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+      return sortOrder === 'asc' ? result : -result;
     });
 
   // Calculate totals
+  // Normalize type and amounts (server returns kobo)
+  const asOriginalType = (t: Transaction) => {
+    const raw = (t.originalType || t.type || '').toString().toUpperCase();
+    if (raw.includes('DEPOSIT') || raw.includes('INCOME') || raw.includes('CREDIT')) return 'DEPOSIT';
+    if (raw.includes('EXPENSE') || raw.includes('WITHDRAWAL') || raw.includes('DEBIT')) return 'EXPENSE';
+    return 'EXPENSE';
+  };
+
   const totalIncome = transactions
-    .filter((t: Transaction) => t.type === 'deposit' || t.originalType === 'DEPOSIT')
-    .reduce((sum: number, t: Transaction) => sum + t.amount, 0);
-    
+    .filter((t: Transaction) => asOriginalType(t) === 'DEPOSIT')
+    .reduce((sum: number, t: Transaction) => sum + Number(t.amount), 0);
   const totalExpenses = transactions
-    .filter((t: Transaction) => t.type === 'expense' || t.originalType === 'EXPENSE')
-    .reduce((sum: number, t: Transaction) => sum + t.amount, 0);
+    .filter((t: Transaction) => asOriginalType(t) === 'EXPENSE')
+    .reduce((sum: number, t: Transaction) => sum + Number(t.amount), 0);
 
   // Get unique categories
   const categories = [...new Set(transactions.map((t: Transaction) => t.category))];
@@ -139,21 +146,18 @@ export function TransactionsPage() {
   };
 
   const getTransactionTypeLabel = (transaction: Transaction) => {
-    if (transaction.originalType === 'DEPOSIT') return 'Income';
-    if (transaction.originalType === 'EXPENSE') return 'Expense';
-    return transaction.type;
+    const t = asOriginalType(transaction);
+    return t === 'DEPOSIT' ? 'Income' : 'Expense';
   };
 
   const getTransactionColor = (transaction: Transaction) => {
-    if (transaction.originalType === 'DEPOSIT') return 'text-green-600';
-    if (transaction.originalType === 'EXPENSE') return 'text-red-600';
-    return 'text-gray-600';
+    const t = asOriginalType(transaction);
+    return t === 'DEPOSIT' ? 'text-green-600' : 'text-red-600';
   };
 
   const getTransactionPrefix = (transaction: Transaction) => {
-    if (transaction.originalType === 'DEPOSIT') return '+';
-    if (transaction.originalType === 'EXPENSE') return '-';
-    return '';
+    const t = asOriginalType(transaction);
+    return t === 'DEPOSIT' ? '+' : '-';
   };
 
   if (error) {
@@ -364,7 +368,7 @@ export function TransactionsPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <span className={`font-medium ${getTransactionColor(transaction)}`}>
-                        {getTransactionPrefix(transaction)}₦{(transaction.amount/100).toLocaleString('en-NG', { maximumFractionDigits: 2 })}
+                        {getTransactionPrefix(transaction)}₦{(Number(transaction.amount)/100).toLocaleString('en-NG', { maximumFractionDigits: 2 })}
                       </span>
                     </TableCell>
                   </TableRow>

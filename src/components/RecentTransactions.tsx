@@ -47,15 +47,40 @@ const mapCategory = (apiCategory: string): string => {
   return categoryMap[lowerCategory] || 'Other';
 };
 
+// Function to normalize transaction type from various API shapes
+const inferOriginalType = (t: any): 'DEPOSIT' | 'EXPENSE' | 'INCOME' | 'WITHDRAWAL' => {
+  const raw = (t.type || t.transactionType || t.originalType || '').toString().toUpperCase();
+  if (raw.includes('DEPOSIT') || raw.includes('CREDIT') || raw.includes('INCOME')) return 'DEPOSIT';
+  if (raw.includes('EXPENSE') || raw.includes('WITHDRAWAL') || raw.includes('DEBIT') || raw.includes('PAYMENT')) return 'EXPENSE';
+
+  // Direction flags
+  if (typeof t.isCredit === 'boolean') return t.isCredit ? 'DEPOSIT' : 'EXPENSE';
+  if (typeof t.direction === 'string') {
+    const dir = t.direction.toUpperCase();
+    if (dir === 'CREDIT') return 'DEPOSIT';
+    if (dir === 'DEBIT') return 'EXPENSE';
+  }
+
+  // Fall back to amount sign
+  if (typeof t.amount === 'number') return t.amount >= 0 ? 'DEPOSIT' : 'EXPENSE';
+
+  // Category heuristic
+  const cat = (t.category || t.type || '').toString().toLowerCase();
+  if (cat.includes('income') || cat.includes('salary')) return 'DEPOSIT';
+  return 'EXPENSE';
+};
+
 // Function to map API response to Transaction interface
 const mapApiResponseToTransaction = (apiTransaction: any): Transaction => {
+  const originalType = inferOriginalType(apiTransaction);
+  const amountKobo = Math.abs(apiTransaction.amount || apiTransaction.amountKobo || 0);
   return {
-    id: apiTransaction.id || apiTransaction._id || Math.random().toString(),
+    id: apiTransaction.id || apiTransaction._id || apiTransaction.reference || Math.random().toString(),
     description: apiTransaction.description || apiTransaction.title || apiTransaction.reference || 'Transaction',
-    amount: Math.abs(apiTransaction.amount || 0) / 100,
+    amount: (amountKobo || 0) / 100,
     category: mapCategory(apiTransaction.category || apiTransaction.type || 'Other'),
     date: apiTransaction.date || apiTransaction.createdAt || apiTransaction.timestamp || new Date().toISOString(),
-    type: apiTransaction.amount >= 0 ? 'DEPOSIT' : 'EXPENSE',
+    type: originalType === 'DEPOSIT' ? 'DEPOSIT' : 'EXPENSE',
   };
 };
 
