@@ -1008,6 +1008,7 @@ const handlePayBill = (bill: Bill) => {
                     </div>
                   );
                 })
+                }
                 {/* Pagination Controls */}
                 <div className="flex items-center justify-between pt-2">
                   <p className="text-sm text-muted-foreground">
