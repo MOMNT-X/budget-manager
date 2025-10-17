@@ -54,6 +54,13 @@ export function TransactionsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 50;
 
+    const asOriginalType = (t: Transaction) => {
+    const raw = (t.originalType || t.type || '').toString().toUpperCase();
+    if (raw.includes('DEPOSIT') || raw.includes('INCOME') || raw.includes('CREDIT')) return 'DEPOSIT';
+    if (raw.includes('EXPENSE') || raw.includes('WITHDRAWAL') || raw.includes('DEBIT')) return 'EXPENSE';
+    return 'EXPENSE';
+  };
+
   // Fetch transactions with filters
   const fetchTransactions = useCallback(async () => {
     try {
@@ -85,39 +92,36 @@ export function TransactionsPage() {
   // Filter and sort transactions
   const filteredTransactions = transactions
     .filter((transaction: Transaction) => {
-      const matchesSearch = transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           transaction.category.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch =
+        transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        transaction.category.toLowerCase().includes(searchTerm.toLowerCase());
+
       const t = asOriginalType(transaction);
-      const matchesType = filterType === "all" || (filterType === 'deposit' ? t === 'DEPOSIT' : t === 'EXPENSE');
-      const matchesCategory = filterCategory === "all" || transaction.category === filterCategory;
-      
+      const matchesType =
+        filterType === "all" ||
+        (filterType === "deposit" ? t === "DEPOSIT" : t === "EXPENSE");
+
+      const matchesCategory =
+        filterCategory === "all" || transaction.category === filterCategory;
+
       return matchesSearch && matchesType && matchesCategory;
     })
     .sort((a: Transaction, b: Transaction) => {
       let aValue: any = a[sortBy as keyof Transaction];
       let bValue: any = b[sortBy as keyof Transaction];
-      if (sortBy === 'timestamp') {
+      if (sortBy === "timestamp") {
         aValue = new Date(a.timestamp).getTime();
         bValue = new Date(b.timestamp).getTime();
-      } else if (sortBy === 'amount') {
+      } else if (sortBy === "amount") {
         aValue = Number(a.amount);
         bValue = Number(b.amount);
-      } else if (typeof aValue === 'string' && typeof bValue === 'string') {
+      } else if (typeof aValue === "string" && typeof bValue === "string") {
         aValue = aValue.toLowerCase();
         bValue = bValue.toLowerCase();
       }
       const result = aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
-      return sortOrder === 'asc' ? result : -result;
+      return sortOrder === "asc" ? result : -result;
     });
-
-  // Calculate totals
-  // Normalize type and amounts (server returns kobo)
-  const asOriginalType = (t: Transaction) => {
-    const raw = (t.originalType || t.type || '').toString().toUpperCase();
-    if (raw.includes('DEPOSIT') || raw.includes('INCOME') || raw.includes('CREDIT')) return 'DEPOSIT';
-    if (raw.includes('EXPENSE') || raw.includes('WITHDRAWAL') || raw.includes('DEBIT')) return 'EXPENSE';
-    return 'EXPENSE';
-  };
 
   const totalIncome = transactions
     .filter((t: Transaction) => asOriginalType(t) === 'DEPOSIT')
@@ -184,10 +188,6 @@ export function TransactionsPage() {
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
-          <Button size="sm">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Transaction
-          </Button>
         </div>
       </div>
 
@@ -207,7 +207,7 @@ export function TransactionsPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-green-600">
-                  +₦{totalIncome.toLocaleString('en-NG', { maximumFractionDigits: 2 })}
+                  +₦{(totalIncome / 100).toLocaleString('en-NG', { maximumFractionDigits: 2 })}
                 </div>
                 <p className="text-xs text-muted-foreground">All time</p>
               </CardContent>
@@ -219,7 +219,7 @@ export function TransactionsPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-red-600">
-                  -₦{totalExpenses.toLocaleString('en-NG', { maximumFractionDigits: 2 })}
+                  -₦{(totalExpenses / 100).toLocaleString('en-NG', { maximumFractionDigits: 2 })}
                 </div>
                 <p className="text-xs text-muted-foreground">All time</p>
               </CardContent>
@@ -231,7 +231,7 @@ export function TransactionsPage() {
               </CardHeader>
               <CardContent>
                 <div className={`text-2xl font-bold ${totalIncome - totalExpenses >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {totalIncome - totalExpenses >= 0 ? '+' : ''}₦{Math.abs(totalIncome - totalExpenses).toLocaleString('en-NG', { maximumFractionDigits: 2 })}
+                  {totalIncome - totalExpenses >= 0 ? '+' : ''}₦{Math.abs((totalIncome - totalExpenses) / 100).toLocaleString('en-NG', { maximumFractionDigits: 2 })}
                 </div>
                 <p className="text-xs text-muted-foreground">All time</p>
               </CardContent>

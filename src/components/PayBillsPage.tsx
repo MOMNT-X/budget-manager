@@ -230,7 +230,7 @@ export function PayBillsPage() {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch(`${BASE_URL}/categories`, {
+      const response = await fetch(`${BASE_URL}/categories/with-budgets`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
         },
@@ -620,25 +620,24 @@ const handlePayBill = (bill: Bill) => {
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
-                      {categories
-                        .filter((category) => (category.budgetLimit || 0) > 0)
-                        .map((category) => {
-                        const IconComponent = getIconForCategory(category.name, category.icon);
-                        return (
-                          <SelectItem key={category.id} value={category.id}>
-                            <div className="flex items-center gap-2">
-                              <IconComponent className="h-4 w-4" />
-                              {category.name}
-                              {category.budgetLimit && (
-                                <span className="text-xs text-muted-foreground">
-                                  (₦{(category.budgetLimit / 100).toLocaleString('en-NG')} budget)
-                                </span>
-                              )}
-                            </div>
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
+  {categories.map((category) => {
+    const IconComponent = getIconForCategory(category.name, category.icon);
+    return (
+      <SelectItem key={category.id} value={category.id}>
+        <div className="flex items-center gap-2">
+          <IconComponent className="h-4 w-4" />
+          {category.name}
+          {category.budgetLimit && (
+            <span className="text-xs text-muted-foreground">
+              (₦{category.budgetLimit.toLocaleString('en-NG')} budget, 
+               ₦{(category.remaining || 0).toLocaleString('en-NG')} remaining)
+            </span>
+          )}
+        </div>
+      </SelectItem>
+    );
+  })}
+</SelectContent>
                   </Select>
                 </div>
 
@@ -797,38 +796,38 @@ const handlePayBill = (bill: Bill) => {
 
               {/* Budget Warning */}
               {newBill.categoryId && newBill.amount && (
-                (() => {
-                  const category = categories.find(c => c.id === newBill.categoryId);
-                  const billAmount = parseFloat(newBill.amount) * 100; // Convert to kobo
-                  const currentSpent = category?.spent || 0;
-                  const budgetLimit = category?.budgetLimit || 0;
-                  const newTotal = currentSpent + billAmount;
-                  
-                  if (budgetLimit > 0 && newTotal > budgetLimit) {
-                    return (
-                      <Alert variant="destructive">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertDescription>
-                          This bill will exceed your budget limit by ₦{((newTotal - budgetLimit) / 100).toLocaleString('en-NG')}
-                        </AlertDescription>
-                      </Alert>
-                    );
-                  }
-                  
-                  if (budgetLimit > 0 && newTotal > budgetLimit * 0.8) {
-                    return (
-                      <Alert>
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertDescription>
-                          This bill will use {Math.round((newTotal / budgetLimit) * 100)}% of your budget for {category?.name}
-                        </AlertDescription>
-                      </Alert>
-                    );
-                  }
-                  
-                  return null;
-                })()
-              )}
+  (() => {
+    const category = categories.find(c => c.id === newBill.categoryId);
+    const billAmount = parseFloat(newBill.amount); // Already in naira
+    const currentSpent = (category?.spent || 0) / 100; // Convert kobo to naira
+    const budgetLimit = category?.budgetLimit || 0; // Already in naira
+    const newTotal = currentSpent + billAmount;
+    
+    if (budgetLimit > 0 && newTotal > budgetLimit) {
+      return (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            This bill will exceed your budget limit by ₦{(newTotal - budgetLimit).toLocaleString('en-NG')}
+          </AlertDescription>
+        </Alert>
+      );
+    }
+    
+    if (budgetLimit > 0 && newTotal > budgetLimit * 0.8) {
+      return (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            This bill will use {Math.round((newTotal / budgetLimit) * 100)}% of your budget for {category?.name}
+          </AlertDescription>
+        </Alert>
+      );
+    }
+    
+    return null;
+  })()
+)}
             </div>
             
             <div className="flex justify-end space-x-2">
@@ -853,10 +852,10 @@ const handlePayBill = (bill: Bill) => {
                   // Enforce budget limit
                   (() => {
                     const category = categories.find(c => c.id === newBill.categoryId);
-                    const billAmount = parseFloat(newBill.amount || '0') * 100;
-                    const currentSpent = category?.spent || 0;
-                    const budgetLimit = category?.budgetLimit || 0;
-                    return budgetLimit > 0 && (currentSpent + billAmount) > budgetLimit;
+      const billAmount = parseFloat(newBill.amount || '0');
+      const currentSpent = (category?.spent || 0) / 100;
+      const budgetLimit = category?.budgetLimit || 0;
+      return budgetLimit > 0 && (currentSpent + billAmount) > budgetLimit;
                   })() ||
                   // Require verified recipient for autopay
                   (newBill.autoPay && !autoPayRecipient.verified)
@@ -1007,39 +1006,52 @@ const handlePayBill = (bill: Bill) => {
                       </div>
                     </div>
                   );
-                })
+                })}
                 {/* Pagination Controls */}
-                <div className="flex items-center justify-between pt-2">
-                  <p className="text-sm text-muted-foreground">
-                    Showing {((billPage - 1) * 15) + 1} - {Math.min(billPage * 15, bills.filter(b => {
-                      const q = billSearch.toLowerCase();
-                      return (
-                        b.description.toLowerCase().includes(q) ||
-                        b.category.name.toLowerCase().includes(q) ||
-                        b.billStatus.toLowerCase().includes(q)
-                      );
-                    }).length)} of {bills.filter(b => {
-                      const q = billSearch.toLowerCase();
-                      return (
-                        b.description.toLowerCase().includes(q) ||
-                        b.category.name.toLowerCase().includes(q) ||
-                        b.billStatus.toLowerCase().includes(q)
-                      );
-                    }).length}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={() => setBillPage(p => Math.max(1, p - 1))} disabled={billPage === 1}>Previous</Button>
-                    <span className="text-sm">Page {billPage}</span>
-                    <Button variant="outline" size="sm" onClick={() => setBillPage(p => p + 1)} disabled={billSearch ? (billPage * 15) >= bills.filter(b => {
-                      const q = billSearch.toLowerCase();
-                      return (
-                        b.description.toLowerCase().includes(q) ||
-                        b.category.name.toLowerCase().includes(q) ||
-                        b.billStatus.toLowerCase().includes(q)
-                      );
-                    }).length : (billPage * 15) >= bills.length}>Next</Button>
-                  </div>
-                </div>
+<div className="flex items-center justify-between pt-2">
+  {(() => {
+    const filteredBills = bills.filter(b => {
+      const q = billSearch.toLowerCase();
+      return (
+        b.description.toLowerCase().includes(q) ||
+        b.category.name.toLowerCase().includes(q) ||
+        b.billStatus.toLowerCase().includes(q)
+      );
+    });
+    
+    const startIndex = ((billPage - 1) * 15) + 1;
+    const endIndex = Math.min(billPage * 15, filteredBills.length);
+    const totalFiltered = filteredBills.length;
+    const isLastPage = (billPage * 15) >= totalFiltered;
+    
+    return (
+      <>
+        <p className="text-sm text-muted-foreground">
+          Showing {startIndex} - {endIndex} of {totalFiltered}
+        </p>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => setBillPage(p => Math.max(1, p - 1))} 
+            disabled={billPage === 1}
+          >
+            Previous
+          </Button>
+          <span className="text-sm">Page {billPage}</span>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => setBillPage(p => p + 1)} 
+            disabled={isLastPage}
+          >
+            Next
+          </Button>
+        </div>
+      </>
+    );
+  })()}
+</div>
               </div>
             )}
           </CardContent>
@@ -1053,6 +1065,7 @@ const handlePayBill = (bill: Bill) => {
           </CardTitle>
         </CardHeader>
         <CardContent>
+
           {selectedBill ? (
             <div className="space-y-4">
               <div>

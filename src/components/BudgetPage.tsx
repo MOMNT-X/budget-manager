@@ -1,3 +1,5 @@
+// src/components/BudgetPage.tsx - Complete Updated Version with Conflict Handling
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
@@ -11,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Skeleton } from "./ui/skeleton";
 import { Checkbox } from "./ui/checkbox";
 import { Plus, Target, TrendingUp, TrendingDown, Edit, Trash2, AlertTriangle, CheckCircle, Loader2, Calendar } from "lucide-react";
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { Alert, AlertDescription } from "./ui/alert";
 import { BASE_URL, sendBudgetCreatedNotification, sendBudgetThresholdAlert } from "@/config/api";
 
@@ -39,6 +41,8 @@ interface BudgetSummary {
   totalBudget: number;
   totalSpent: number;
   remaining: number;
+  percentageUsed: number;
+  status: string;
 }
 
 interface BudgetWithSpending extends Budget {
@@ -46,7 +50,6 @@ interface BudgetWithSpending extends Budget {
   color: string;
 }
 
-// Skeleton components
 const BudgetCardSkeleton = () => (
   <Card>
     <CardContent className="p-6">
@@ -96,7 +99,6 @@ export function BudgetPage() {
   const [createLoading, setCreateLoading] = useState(false);
   const [error, setError] = useState("");
   
-  // Form states
   const [newBudget, setNewBudget] = useState({
     categoryId: '',
     amount: '',
@@ -113,55 +115,53 @@ export function BudgetPage() {
     title: string;
     message: string;
   }>({ open: false, title: '', message: '' });
+  const [conflictingBudget, setConflictingBudget] = useState<any | null>(null);
+  const [showConflictDialog, setShowConflictDialog] = useState(false);
 
   const colorOptions = [
     '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#ffeaa7', 
     '#dda0dd', '#ff7675', '#74b9ff', '#00b894', '#fdcb6e'
   ];
-const api = BASE_URL;
+  const api = BASE_URL;
+
   useEffect(() => {
     fetchData();
   }, []);
 
-const fetchData = async () => {
-  try {
-    setLoading(true);
-    setError("");
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError("");
 
-    // Fetch budgets
-    const userId = localStorage.getItem('userId');
-    const budgetsResponse = await fetch(`${api}/budgets/user/${userId}`, {
-      headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` },
-    });
-    if (!budgetsResponse.ok) throw new Error('Failed to fetch budgets');
-    const budgetsData = await budgetsResponse.json();
-    // localStorage.setItem('budgets', JSON.stringify(budgetsData));
+      const userId = localStorage.getItem('userId');
+      const budgetsResponse = await fetch(`${api}/budgets/user/${userId}`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` },
+      });
+      if (!budgetsResponse.ok) throw new Error('Failed to fetch budgets');
+      const budgetsData = await budgetsResponse.json();
 
-    // Fetch categories
-    const categoriesResponse = await fetch(`${api}/categories`, {
-      headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` },
-    });
-    if (!categoriesResponse.ok) throw new Error('Failed to fetch categories');
-    const categoriesData = await categoriesResponse.json();
+      const categoriesResponse = await fetch(`${api}/categories`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` },
+      });
+      if (!categoriesResponse.ok) throw new Error('Failed to fetch categories');
+      const categoriesData = await categoriesResponse.json();
 
-    // Fetch summary
-    const summaryResponse = await fetch(`${api}/budgets/summary`, {
-      headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` },
-    });
-    if (!summaryResponse.ok) throw new Error('Failed to fetch summary');
-    const summaryData = await summaryResponse.json();
+      const summaryResponse = await fetch(`${api}/budgets/summary`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` },
+      });
+      if (!summaryResponse.ok) throw new Error('Failed to fetch summary');
+      const summaryData = await summaryResponse.json();
 
-    // Set state
-    setBudgets(budgetsData);
-    setCategories(categoriesData);
-    setSummary(summaryData);
+      setBudgets(budgetsData);
+      setCategories(categoriesData);
+      setSummary(summaryData.data);
 
-  } catch (err) {
-    setError(err instanceof Error ? err.message : 'Failed to fetch data');
-  } finally {
-    setLoading(false);
-  }
-};
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCreateBudget = async () => {
     try {
@@ -184,32 +184,111 @@ const fetchData = async () => {
         }),
       });
 
+      const responseData = await response.json();
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to create budget');
+        if (response.status === 409 && responseData.existingBudget) {
+          setConflictingBudget(responseData.existingBudget);
+          setShowConflictDialog(true);
+          setIsDialogOpen(false);
+          return;
+        }
+        throw new Error(responseData.message || 'Failed to create budget');
       }
 
-      // Refresh data
       await fetchData();
-      
-      // Reset form
       resetForm();
       setIsDialogOpen(false);
 
-      // Show success modal
       setShowSuccessModal({
         open: true,
         title: 'Budget Created',
         message: 'Your new budget has been created successfully.'
       });
 
-      // Notify backend (non-blocking)
-      try { await sendBudgetCreatedNotification(await response.json()); } catch {}
+      try { await sendBudgetCreatedNotification(responseData); } catch {}
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create budget');
     } finally {
       setCreateLoading(false);
+    }
+  };
+
+  const handleUpdateBudget = async () => {
+    if (!editingBudget) return;
+
+    try {
+      setCreateLoading(true);
+      setError("");
+
+      const response = await fetch(`${api}/budgets/${editingBudget.id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          categoryId: newBudget.categoryId,
+          amount: parseFloat(newBudget.amount),
+          startDate: newBudget.startDate,
+          endDate: newBudget.endDate,
+          recurring: newBudget.recurring,
+          frequency: newBudget.recurring ? newBudget.frequency : undefined
+        }),
+      });
+
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        throw new Error(responseData.message || 'Failed to update budget');
+      }
+
+      await fetchData();
+      resetForm();
+      setIsDialogOpen(false);
+
+      setShowSuccessModal({
+        open: true,
+        title: 'Budget Updated',
+        message: 'Your budget has been updated successfully.'
+      });
+
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update budget');
+    } finally {
+      setCreateLoading(false);
+    }
+  };
+
+  const handleDeleteBudget = async (budgetId: string) => {
+    if (!confirm('Are you sure you want to delete this budget?')) return;
+
+    try {
+      setError("");
+
+      const response = await fetch(`${api}/budgets/${budgetId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete budget');
+      }
+
+      await fetchData();
+
+      setShowSuccessModal({
+        open: true,
+        title: 'Budget Deleted',
+        message: 'Your budget has been deleted successfully.'
+      });
+
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete budget');
     }
   };
 
@@ -226,6 +305,22 @@ const fetchData = async () => {
     setIsDialogOpen(true);
   };
 
+  const handleUpdateExistingBudget = () => {
+    if (!conflictingBudget) return;
+    
+    setEditingBudget(conflictingBudget as Budget);
+    setNewBudget({
+      categoryId: conflictingBudget.category?.id || newBudget.categoryId,
+      amount: newBudget.amount,
+      startDate: newBudget.startDate,
+      endDate: newBudget.endDate,
+      recurring: newBudget.recurring,
+      frequency: newBudget.frequency
+    });
+    setShowConflictDialog(false);
+    setIsDialogOpen(true);
+  };
+
   const resetForm = () => {
     setNewBudget({
       categoryId: '',
@@ -238,11 +333,10 @@ const fetchData = async () => {
     setEditingBudget(null);
   };
 
-  // Calculate budget data with colors for visualization
   const getBudgetsWithSpending = (): BudgetWithSpending[] => {
     return budgets.map((budget, index) => ({
       ...budget,
-      spent: 0, // This would need to be calculated from transactions
+      spent: 0,
       color: colorOptions[index % colorOptions.length]
     }));
   };
@@ -250,26 +344,21 @@ const fetchData = async () => {
   const budgetsWithSpending = getBudgetsWithSpending();
   const totalAllocated = summary?.totalBudget || 0;
   const totalSpent = summary?.totalSpent || 0;
-  const totalRemaining = (totalAllocated - (totalSpent)/100) || 0;
-  const budgetUtilization = totalAllocated > 0 ? (totalSpent / totalAllocated)  : 0;
+  const totalRemaining = summary?.remaining || 0;
+  const budgetUtilization = summary?.percentageUsed || 0;
 
   useEffect(() => {
-    // Notify if nearing zero balance: utilization >= 0.9
     if (summary && totalAllocated > 0) {
-      const percentUsed = Math.min(100, (totalSpent / totalAllocated) * 100);
+      const percentUsed = summary?.percentageUsed || 0;
       if (percentUsed >= 90) {
         try { sendBudgetThresholdAlert(summary, percentUsed); } catch {}
       }
     }
   }, [summary]);
 
-  const overBudgetCategories = budgetsWithSpending.filter(budget => budget.spent > budget.amount);
-  const underBudgetCategories = budgetsWithSpending.filter(budget => budget.spent < budget.amount * 0.8);
-
   if (loading) {
     return (
       <div className="space-y-6">
-        {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <Skeleton className="h-8 w-48 mb-2" />
@@ -277,15 +366,11 @@ const fetchData = async () => {
           </div>
           <Skeleton className="h-10 w-32" />
         </div>
-
-        {/* Summary Cards */}
         <div className="grid gap-4 md:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
             <SummaryCardSkeleton key={i} />
           ))}
         </div>
-
-        {/* Budget Progress */}
         <Card>
           <CardHeader>
             <Skeleton className="h-6 w-48" />
@@ -304,8 +389,6 @@ const fetchData = async () => {
             </div>
           </CardContent>
         </Card>
-
-        {/* Budget Categories */}
         <div className="grid gap-4">
           {[1, 2, 3].map((i) => (
             <BudgetCardSkeleton key={i} />
@@ -317,7 +400,6 @@ const fetchData = async () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold">Budget Management</h2>
@@ -325,7 +407,7 @@ const fetchData = async () => {
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={() => { resetForm(); }}>
               <Plus className="h-4 w-4 mr-2" />
               Create Budget
             </Button>
@@ -438,7 +520,7 @@ const fetchData = async () => {
                 Cancel
               </Button>
               <Button 
-                onClick={handleCreateBudget}
+                onClick={editingBudget ? handleUpdateBudget : handleCreateBudget}
                 disabled={
                   createLoading || 
                   !newBudget.categoryId || 
@@ -451,7 +533,7 @@ const fetchData = async () => {
                 {createLoading ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Creating...
+                    {editingBudget ? 'Updating...' : 'Creating...'}
                   </>
                 ) : (
                   <>
@@ -465,7 +547,6 @@ const fetchData = async () => {
         </Dialog>
       </div>
 
-      {/* Error Alert */}
       {error && (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
@@ -473,7 +554,6 @@ const fetchData = async () => {
         </Alert>
       )}
 
-      {/* Budget Overview */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -481,7 +561,7 @@ const fetchData = async () => {
             <Target className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₦{(totalAllocated).toLocaleString('en-NG')}</div>
+            <div className="text-2xl font-bold">₦{totalAllocated.toLocaleString('en-NG')}</div>
             <p className="text-xs text-muted-foreground">Total allocation</p>
           </CardContent>
         </Card>
@@ -492,7 +572,7 @@ const fetchData = async () => {
             <TrendingDown className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">₦{(totalSpent/100).toLocaleString('en-NG')}</div>
+            <div className="text-2xl font-bold text-red-600">₦{totalSpent.toLocaleString('en-NG')}</div>
             <p className="text-xs text-muted-foreground">{budgetUtilization.toFixed(1)}% of budget</p>
           </CardContent>
         </Card>
@@ -503,7 +583,7 @@ const fetchData = async () => {
             <TrendingUp className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">₦{(totalRemaining).toLocaleString('en-NG')}</div>
+            <div className="text-2xl font-bold text-green-600">₦{totalRemaining.toLocaleString('en-NG')}</div>
             <p className="text-xs text-muted-foreground">Left to spend</p>
           </CardContent>
         </Card>
@@ -520,7 +600,6 @@ const fetchData = async () => {
         </Card>
       </div>
 
-      {/* Budget Progress */}
       <Card>
         <CardHeader>
           <CardTitle>Overall Budget Progress</CardTitle>
@@ -528,12 +607,12 @@ const fetchData = async () => {
         <CardContent>
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span>Used: ₦{(totalSpent / 100).toLocaleString('en-NG')}</span>
+              <span>Used: ₦{(totalSpent).toLocaleString('en-NG')}</span>
               <span>{budgetUtilization.toFixed(1)}%</span>
             </div>
             <Progress value={Math.min(budgetUtilization, 100)} className="w-full" />
             <div className="flex justify-between text-sm text-muted-foreground">
-              <span>Budget: ₦{(totalAllocated ).toLocaleString('en-NG')}</span>
+              <span>Budget: ₦{(totalAllocated).toLocaleString('en-NG')}</span>
               <span>Remaining: ₦{(totalRemaining).toLocaleString('en-NG')}</span>
             </div>
           </div>
@@ -563,8 +642,8 @@ const fetchData = async () => {
           ) : (
             <div className="grid gap-4">
               {budgets.map((budget) => {
-                const spent = 0; // Would be calculated from actual transaction data
-                const percentage = budget.amount > 0 ? (spent / budget.amount)  : 0;
+                const spent = 0;
+                const percentage = budget.amount > 0 ? (spent / budget.amount) : 0;
                 const isOverBudget = spent > budget.amount;
                 const remaining = budget.amount - spent;
                 
@@ -592,6 +671,22 @@ const fetchData = async () => {
                           {isOverBudget && (
                             <Badge variant="destructive">Over Budget</Badge>
                           )}
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleEditBudget(budget)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDeleteBudget(budget.id)}
+                          >
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
                         </div>
                       </div>
                       
@@ -621,7 +716,6 @@ const fetchData = async () => {
 
         <TabsContent value="analytics" className="space-y-6">
           <div className="grid gap-6 lg:grid-cols-2">
-            {/* Budget Distribution */}
             <Card>
               <CardHeader>
                 <CardTitle>Budget Distribution</CardTitle>
@@ -644,9 +738,6 @@ const fetchData = async () => {
                             <Cell key={`cell-${index}`} fill={entry.color} />
                           ))}
                         </Pie>
-                        <Tooltip 
-                          formatter={(value) => [`₦${(value ).toLocaleString('en-NG')}`, 'Budget']}
-                        />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
@@ -661,7 +752,6 @@ const fetchData = async () => {
               </CardContent>
             </Card>
 
-            {/* Budget Categories */}
             <Card>
               <CardHeader>
                 <CardTitle>Budget Categories</CardTitle>
@@ -738,7 +828,7 @@ const fetchData = async () => {
             <p className="text-sm text-muted-foreground mb-4">{showSuccessModal.message}</p>
             <div className="text-right">
               <button
-                className="px-4 py-2 text-white bg-blue-600 rounded"
+                className="px-4 py-2 text-white bg-blue-600 rounded hover:bg-blue-700"
                 onClick={() => setShowSuccessModal({ open: false, title: '', message: '' })}
               >
                 Close
@@ -747,6 +837,93 @@ const fetchData = async () => {
           </div>
         </div>
       )}
+
+      <Dialog open={showConflictDialog} onOpenChange={setShowConflictDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-yellow-500" />
+              Budget Already Exists
+            </DialogTitle>
+          </DialogHeader>
+          
+          {conflictingBudget && (
+            <div className="space-y-4 py-4">
+              <Alert>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  An active budget for <strong>{conflictingBudget.category?.name || 'this category'}</strong> already exists.
+                </AlertDescription>
+              </Alert>
+
+              <div className="p-4 bg-muted rounded-lg space-y-2">
+                <h4 className="font-semibold">Existing Budget Details:</h4>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <span className="text-muted-foreground">Amount:</span>
+                  <span className="font-medium">₦{conflictingBudget.amount.toLocaleString('en-NG')}</span>
+                  
+                  <span className="text-muted-foreground">Start Date:</span>
+                  <span className="font-medium">
+                    {new Date(conflictingBudget.startDate).toLocaleDateString()}
+                  </span>
+                  
+                  <span className="text-muted-foreground">End Date:</span>
+                  <span className="font-medium">
+                    {new Date(conflictingBudget.endDate).toLocaleDateString()}
+                  </span>
+
+                  {conflictingBudget.recurring && (
+                    <>
+                      <span className="text-muted-foreground">Recurring:</span>
+                      <span className="font-medium">
+                        Yes ({conflictingBudget.frequency?.toLowerCase()})
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="p-4 bg-blue-50 rounded-lg space-y-2">
+                <h4 className="font-semibold text-blue-900">What would you like to do?</h4>
+                <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
+                  <li>Update the existing budget with your new values</li>
+                  <li>Choose a different category</li>
+                  <li>Cancel this operation</li>
+                </ul>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end space-x-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowConflictDialog(false);
+                setConflictingBudget(null);
+                resetForm();
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowConflictDialog(false);
+                setConflictingBudget(null);
+                setIsDialogOpen(true);
+              }}
+            >
+              Choose Different Category
+            </Button>
+            <Button
+              onClick={handleUpdateExistingBudget}
+            >
+              <Edit className="h-4 w-4 mr-2" />
+              Update Existing Budget
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
