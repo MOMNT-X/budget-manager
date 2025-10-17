@@ -220,7 +220,7 @@ export default function SignupPage({ onAuthSuccess }: { onAuthSuccess?: () => vo
         {/* Background image with gradient overlay */}
         <div className="absolute inset-0">
           <img
-            src="/image/View of a mountain lake with a full moon in the sky.jpg"
+            src="/image/signup.jpg"
             alt="Mountain lake with moon"
             className="w-full h-full object-cover"
           />
