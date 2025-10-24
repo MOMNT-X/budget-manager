@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { Skeleton } from "./ui/skeleton";
-import { getDashboardCategories } from "../config/api";
+import { getDashboardCategories } from "@/config/api";
 
 // Shape after transforming API response
 export interface CategoryData {

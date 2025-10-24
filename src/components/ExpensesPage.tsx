@@ -3,10 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { Calendar, ListFilter as Filter, TrendingDown, TrendingUp, DollarSign, Coins, TrendingUpDown } from "lucide-react";
+import { Calendar, Filter, TrendingDown, TrendingUp, DollarSign, Coins, TrendingUpDown } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { CandlestickChart } from "./CandlestickChart";
-import { getExpensesSummary } from "../config/api";
+import { getExpensesSummary } from "@/config/api";
 
 // Skeleton components
 const CardSkeleton = () => (
@@ -72,7 +72,7 @@ export function ExpensesPage() {
         filters.week = 1; // Last 7 days
       } else {
         // Handle specific months
-        const monthMap = {
+        const monthMap: { [key: string]: number } = {
           jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6,
           jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12
         };
@@ -176,7 +176,7 @@ export function ExpensesPage() {
     categoryBreakdown = []
   } = summary;
 
-  // Mock data for charts based on actual data
+  // Mock data for chart based on actual data
   const mockWeeklyBreakdown = [
     { week: "Week 1", amount: totalExpenses * 0.25 },
     { week: "Week 2", amount: totalExpenses * 0.30 },
@@ -195,7 +195,7 @@ export function ExpensesPage() {
     if (selectedPeriod === "last-month") return "Last month";
     if (selectedPeriod === "this-week") return "This week";
     
-    const monthNames = {
+    const monthNames: { [key: string]: string } = {
       jan: "January", feb: "February", mar: "March", apr: "April",
       may: "May", jun: "June", jul: "July", aug: "August",
       sep: "September", oct: "October", nov: "November", dec: "December"
@@ -243,7 +243,7 @@ export function ExpensesPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Categories</SelectItem>
-              {categoryBreakdown.map((cat) => (
+              {categoryBreakdown.map((cat: any) => (
                 <SelectItem key={cat.categoryId} value={cat.categoryId}>
                   {cat.categoryName}
                 </SelectItem>
@@ -371,7 +371,7 @@ export function ExpensesPage() {
         <CardContent>
           <div className="space-y-4">
             {categoryBreakdown.length > 0 ? (
-              categoryBreakdown.map((category, index) => (
+              categoryBreakdown.map((category: any, index: number) => (
                 <div key={category.categoryId || index} className="flex items-center justify-between p-4 border rounded-lg">
                   <div className="flex items-center space-x-3">
                     <div 

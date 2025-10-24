@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "vite preview --host 0.0.0.0 --port ${PORT:-3000}",
+    "docker:build": "docker build -t budget-manager .",
+    "docker:run": "docker run -p 8080:80 budget-manager"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.11",
@@ -33,6 +36,7 @@
     "@radix-ui/react-slot": "^1.2.3",
     "@radix-ui/react-switch": "^1.2.5",
     "@radix-ui/react-tabs": "^1.1.12",
+    "@radix-ui/react-toast": "^1.2.15",
     "@radix-ui/react-toggle": "^1.1.9",
     "@radix-ui/react-toggle-group": "^1.1.10",
     "@radix-ui/react-tooltip": "^1.2.7",
@@ -44,6 +48,7 @@
     "lottie-react": "^2.4.1",
     "lucide-react": "^0.536.0",
     "next-themes": "^0.4.6",
+    "path": "^0.12.7",
     "react": "^19.1.0",
     "react-day-picker": "^9.8.1",
     "react-dom": "^19.1.0",
@@ -69,6 +74,7 @@
     "globals": "^16.3.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",
+    "typescript": "^5.9.3",
     "vite": "^7.0.4"
   }
 }

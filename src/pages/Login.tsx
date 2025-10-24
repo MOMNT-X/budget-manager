@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { BASE_URL } from "@/config/api";
 
 // Utility function to clear all user data
 const clearAllUserData = () => {
@@ -58,7 +59,7 @@ export default function LoginPage({ onAuthSuccess }: { onAuthSuccess?: () => voi
 
       console.log("📤 Sending login request for:", formData.email);
 
-      const res = await fetch("http://localhost:3000/auth/login", {
+      const res = await fetch(`${BASE_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -87,8 +88,8 @@ export default function LoginPage({ onAuthSuccess }: { onAuthSuccess?: () => voi
 
       // Force a complete page reload to ensure fresh state
       setTimeout(() => {
-        console.log("🔄 Redirecting to layout with fresh state...");
-        window.location.href = "/layout"; // Force reload instead of navigate
+        console.log("🔄 Redirecting to app with fresh state...");
+        window.location.href = "/app"; // Force reload instead of navigate
       }, 2000);
 
     } catch (err: any) {

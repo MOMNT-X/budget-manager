@@ -1,4 +1,28 @@
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000"
+export const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+
+// Common error extractor (NestJS often returns string | string[])
+const extractErrorMessage = (data: any, fallback: string) => {
+  if (!data) return fallback;
+  if (typeof data === "string") return data;
+  if (typeof data.message === "string") return data.message;
+  if (Array.isArray(data.message)) return data.message.join(", ");
+  if (data.error) return String(data.error);
+  return fallback;
+};
+
+// Lightweight request helper for new endpoints only (non-breaking)
+async function request(
+  path: string,
+  init?: RequestInit,
+  fallbackMessage = "Request failed"
+) {
+  const res = await fetch(`${BASE_URL}${path}`, init);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(extractErrorMessage(data, fallbackMessage));
+  }
+  return data;
+}
 
 // Helper to add token
 const authHeaders = () => {
@@ -6,7 +30,6 @@ const authHeaders = () => {
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 console.log("Auth Headers:", authHeaders());
-
 
 // ===== AUTH =====
 export const signup = async (payload: any) => {
@@ -57,7 +80,8 @@ export const getBudgetSummary = async () => {
     headers: { ...authHeaders(), "Content-Type": "application/json" },
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message || "Failed to fetch budget summary");
+  if (!res.ok)
+    throw new Error(data.message || "Failed to fetch budget summary");
   return data;
 };
 
@@ -94,8 +118,25 @@ export const createTransaction = async (payload: any) => {
   return data;
 };
 
-export const getTransactions = async () => {
-  const res = await fetch(`${BASE_URL}/transactions`, {
+export const getTransactions = async (params?: {
+  type?: string;
+  category?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}) => {
+  const query = new URLSearchParams();
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        query.set(key, String(value));
+      }
+    });
+  }
+  const url = `${BASE_URL}/transactions${query.toString() ? `?${query.toString()}` : ''}`;
+  const res = await fetch(url, {
     headers: { ...authHeaders(), "Content-Type": "application/json" },
   });
   const data = await res.json();
@@ -153,6 +194,40 @@ export const WithdrawBalance = async (amount: number) => {
   return data;
 };
 
+// ===== WALLET EXTRAS =====
+export const walletPay = async (payload: {
+  amount: number;
+  description: string;
+  categoryId: string;
+}) => {
+  return await request(
+    "/wallet/pay",
+    {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    },
+    "Failed to process payment"
+  );
+};
+
+export const walletTransfer = async (payload: {
+  accountNumber: string;
+  bankCode: string;
+  amount: number;
+  description?: string;
+}) => {
+  return await request(
+    "/wallet/transfer",
+    {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    },
+    "Transfer failed"
+  );
+};
+
 // ==== BILL =====
 export const payBill = async (payload: any) => {
   const res = await fetch(`${BASE_URL}/bills/pay`, {
@@ -186,12 +261,24 @@ export const getExpenses = async () => {
   return data;
 };
 
-export const getExpensesSummary = async () => {
-  const res = await fetch(`${BASE_URL}/expenses/summary`, {
+export const getExpensesSummary = async (filters?: {
+  month?: number;
+  week?: number; // 1 => last 7 days
+  categoryId?: string;
+}) => {
+  const query = new URLSearchParams();
+  if (filters) {
+    if (filters.month) query.set('month', String(filters.month));
+    if (filters.week) query.set('week', String(filters.week));
+    if (filters.categoryId) query.set('categoryId', filters.categoryId);
+  }
+  const url = `${BASE_URL}/expenses/summary${query.toString() ? `?${query.toString()}` : ''}`;
+  const res = await fetch(url, {
     headers: { ...authHeaders(), "Content-Type": "application/json" },
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message || "Failed to fetch expense summary");
+  if (!res.ok)
+    throw new Error(data.message || "Failed to fetch expense summary");
   return data;
 };
 
@@ -201,7 +288,8 @@ export const getDashboardSummary = async () => {
     headers: { ...authHeaders(), "Content-Type": "application/json" },
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message || "Failed to fetch dashboard summary");
+  if (!res.ok)
+    throw new Error(data.message || "Failed to fetch dashboard summary");
   return data;
 };
 
@@ -210,7 +298,8 @@ export const getDashboardTransactions = async () => {
     headers: { ...authHeaders(), "Content-Type": "application/json" },
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message || "Failed to fetch dashboard transactions");
+  if (!res.ok)
+    throw new Error(data.message || "Failed to fetch dashboard transactions");
   return data;
 };
 
@@ -260,7 +349,8 @@ export const getFinancialGoals = async () => {
     headers: { ...authHeaders(), "Content-Type": "application/json" },
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message || "Failed to fetch financial goals");
+  if (!res.ok)
+    throw new Error(data.message || "Failed to fetch financial goals");
   return data;
 };
 
@@ -271,7 +361,8 @@ export const createFinancialGoal = async (payload: any) => {
     body: JSON.stringify(payload),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message || "Failed to create financial goal");
+  if (!res.ok)
+    throw new Error(data.message || "Failed to create financial goal");
   return data;
 };
 
@@ -302,7 +393,8 @@ export const getRecurringExpenses = async () => {
     headers: { ...authHeaders(), "Content-Type": "application/json" },
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message || "Failed to fetch recurring expenses");
+  if (!res.ok)
+    throw new Error(data.message || "Failed to fetch recurring expenses");
   return data;
 };
 
@@ -313,7 +405,8 @@ export const createRecurringExpense = async (payload: any) => {
     body: JSON.stringify(payload),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message || "Failed to create recurring expense");
+  if (!res.ok)
+    throw new Error(data.message || "Failed to create recurring expense");
   return data;
 };
 
@@ -324,7 +417,8 @@ export const updateRecurringExpense = async (id: string, payload: any) => {
     body: JSON.stringify(payload),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message || "Failed to update recurring expense");
+  if (!res.ok)
+    throw new Error(data.message || "Failed to update recurring expense");
   return data;
 };
 
@@ -334,17 +428,21 @@ export const deleteRecurringExpense = async (id: string) => {
     headers: { ...authHeaders(), "Content-Type": "application/json" },
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message || "Failed to delete recurring expense");
+  if (!res.ok)
+    throw new Error(data.message || "Failed to delete recurring expense");
   return data;
 };
 
 // ===== INSIGHTS & ANALYTICS =====
-export const getSpendingInsights = async (period: 'week' | 'month' | 'year' = 'month') => {
+export const getSpendingInsights = async (
+  period: "week" | "month" | "year" = "month"
+) => {
   const res = await fetch(`${BASE_URL}/insights/spending?period=${period}`, {
     headers: { ...authHeaders(), "Content-Type": "application/json" },
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message || "Failed to fetch spending insights");
+  if (!res.ok)
+    throw new Error(data.message || "Failed to fetch spending insights");
   return data;
 };
 
@@ -353,7 +451,8 @@ export const getSpendingTrends = async (months: number = 6) => {
     headers: { ...authHeaders(), "Content-Type": "application/json" },
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message || "Failed to fetch spending trends");
+  if (!res.ok)
+    throw new Error(data.message || "Failed to fetch spending trends");
   return data;
 };
 
@@ -362,7 +461,8 @@ export const getBudgetPerformance = async () => {
     headers: { ...authHeaders(), "Content-Type": "application/json" },
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message || "Failed to fetch budget performance");
+  if (!res.ok)
+    throw new Error(data.message || "Failed to fetch budget performance");
   return data;
 };
 
@@ -371,7 +471,8 @@ export const getRecommendations = async () => {
     headers: { ...authHeaders(), "Content-Type": "application/json" },
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message || "Failed to fetch recommendations");
+  if (!res.ok)
+    throw new Error(data.message || "Failed to fetch recommendations");
   return data;
 };
 
@@ -403,18 +504,23 @@ export const payBillWithTransfer = async (billId: string, payload?: any) => {
     body: JSON.stringify(payload || {}),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message || "Failed to pay bill via transfer");
+  if (!res.ok)
+    throw new Error(data.message || "Failed to pay bill via transfer");
   return data;
 };
 
-export const resolveAccountNumber = async (accountNumber: string, bankCode: string) => {
+export const resolveAccountNumber = async (
+  accountNumber: string,
+  bankCode: string
+) => {
   const res = await fetch(`${BASE_URL}/paystack/resolve-account`, {
     method: "POST",
     headers: { ...authHeaders(), "Content-Type": "application/json" },
     body: JSON.stringify({ accountNumber, bankCode }),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message || "Failed to resolve account number");
+  if (!res.ok)
+    throw new Error(data.message || "Failed to resolve account number");
   return data;
 };
 
@@ -425,4 +531,96 @@ export const getBankList = async () => {
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || "Failed to fetch bank list");
   return data;
+};
+
+// ===== NOTIFICATIONS =====
+export const sendEmailNotification = async (
+  to: string,
+  subject: string,
+  html: string
+) => {
+  return await request(
+    "/notifications/email",
+    {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ to, subject, html }),
+    },
+    "Failed to send email"
+  );
+};
+
+export const sendDiscordNotification = async (
+  message: string,
+  embed?: any
+) => {
+  return await request(
+    "/notifications/discord",
+    {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ message, embed }),
+    },
+    "Failed to send discord notification"
+  );
+};
+
+export const sendTransactionNotification = async (transaction: any) => {
+  return await request(
+    "/notifications/transaction",
+    {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ transaction }),
+    },
+    "Failed to send transaction notification"
+  );
+};
+
+export const sendBudgetCreatedNotification = async (budget: any) => {
+  return await request(
+    "/notifications/budget-created",
+    {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ budget }),
+    },
+    "Failed to send budget created notification"
+  );
+};
+
+export const sendBudgetThresholdAlert = async (budget: any, percentUsed: number) => {
+  return await request(
+    "/notifications/budget-threshold",
+    {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ budget, percentUsed }),
+    },
+    "Failed to send budget threshold alert"
+  );
+};
+
+export const sendBillPaidNotification = async (bill: any) => {
+  return await request(
+    "/notifications/bill-paid",
+    {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ bill }),
+    },
+    "Failed to send bill paid notification"
+  );
+};
+
+export const sendBillReminderNotification = async (bill: any) => {
+  return await request(
+    "/notifications/bill-reminder",
+    {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ bill }),
+    },
+    "Failed to send bill reminder notification"
+  );
 };

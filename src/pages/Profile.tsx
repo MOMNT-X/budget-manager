@@ -2,108 +2,193 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Pencil } from "lucide-react";
+import { Pencil, Check, X, Home, Wallet } from "lucide-react";
 import { Button } from "../components/ui/button";
-
+import { Skeleton } from "../components/ui/skeleton";
+import { BASE_URL } from "@/config/api";
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<any>(null);
+  const [saving, setSaving] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [formData, setFormData] = useState<any>({});
   const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    navigate("/login"); // This will actually navigate
-  };
+  const token = localStorage.getItem("access_token");
 
   useEffect(() => {
-    const token = localStorage.getItem("access_token");
-
     if (!token) {
-      // If no token, redirect to login
       navigate("/login");
       return;
     }
 
-    fetch("http://localhost:3000/dashboard/profile", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+    fetch(`${BASE_URL}/dashboard/profile`, {
+      headers: { Authorization: `Bearer ${token}` },
     })
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
-        return res.json();
-      })
+      .then((res) => res.json())
       .then((data) => {
         setProfile(data);
+        setFormData({
+          firstName: data.firstName || "",
+          lastName: data.lastName || "",
+          email: data.email || "",
+          username: data.username || "",
+        });
         setLoading(false);
-        localStorage.setItem("email", data.email);
       })
-      .catch((error) => {
-        console.error("Profile fetch error:", error);
+      .catch(() => {
         setLoading(false);
-        // If API call fails (e.g., invalid token), logout
-        handleLogout();
+        navigate("/login");
       });
-  }, [navigate]);
+  }, [navigate, token]);
+
+  const handleLogout = () => {
+    localStorage.removeItem("access_token");
+    navigate("/login");
+  };
+
+  const handleChange = (e: any) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    setMessage(null);
+    try {
+      const res = await fetch(`${BASE_URL}/user/update-profile`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(formData),
+      });
+      if (!res.ok) throw new Error("Failed to update profile");
+      const updated = await res.json();
+      setProfile(updated);
+      setEditing(false);
+      setMessage({ type: "success", text: "Profile updated successfully!" });
+    } catch (err) {
+      console.error(err);
+      setMessage({ type: "error", text: "Something went wrong. Please try again." });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (loading) {
     return (
-      <div className="p-6 max-w-md mx-auto">
-        <div className="animate-pulse">
-          <div className="flex items-center space-x-4">
-            <div className="w-16 h-16 bg-gray-300 rounded-full"></div>
-            <div className="flex-1">
-              <div className="h-4 bg-gray-300 rounded w-3/4 mb-2"></div>
-              <div className="h-4 bg-gray-300 rounded w-1/2"></div>
+      <div className="p-6 max-w-lg mx-auto bg-white shadow-2xl rounded-3xl mt-10 space-y-6">
+        <div className="flex flex-col items-center text-center">
+          <Skeleton className="w-20 h-20 rounded-full mb-4" />
+          <Skeleton className="h-5 w-32 mb-2" />
+          <Skeleton className="h-4 w-48" />
+        </div>
+        <div className="space-y-5">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="flex flex-col">
+              <Skeleton className="h-4 w-24 mb-2" />
+              <Skeleton className="h-10 w-full rounded-md" />
             </div>
-          </div>
-          <div className="mt-6 space-y-3">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-4 bg-gray-300 rounded"></div>
-            ))}
-          </div>
+          ))}
+        </div>
+        <div className="flex justify-center gap-3 mt-6">
+          <Skeleton className="h-10 w-32 rounded-md" />
+          <Skeleton className="h-10 w-32 rounded-md" />
+        </div>
+        <div className="text-center mt-4">
+          <Skeleton className="h-10 w-28 mx-auto rounded-md" />
         </div>
       </div>
     );
   }
 
-  if (!profile) {
-    return <p className="text-center mt-10">Could not load profile.</p>;
-  }
-
   return (
-    <div className="p-6 max-w-md mx-auto bg-white shadow-xl rounded-2xl">
-      {/* Header */}
-      <div className="flex flex-col items-center text-center mb-6">
-        <div className="w-20 h-20 bg-indigo-500 text-white flex items-center justify-center rounded-full text-3xl font-bold shadow-md">
-          {profile.username?.[0] || "U"}
+    <div className="p-6 max-w-lg mx-auto bg-white shadow-2xl rounded-3xl mt-10 space-y-6">
+      {/* Notification */}
+      {message && (
+        <div
+          className={`text-white px-4 py-2 rounded-md ${
+            message.type === "success" ? "bg-green-600" : "bg-red-600"
+          }`}
+        >
+          {message.text}
         </div>
-        <h1 className="mt-3 text-2xl font-semibold">
-          Hey there, <span className="text-indigo-600">{profile.username}</span> 👋
+      )}
+
+      {/* Navigation Buttons */}
+      <div className="flex justify-between">
+        <Button variant="outline" onClick={() => navigate("/app/dashboard")} className="flex items-center gap-2">
+          <Home size={18} />
+          Go Home
+        </Button>
+        <Button variant="outline" onClick={() => navigate("/app/wallet")} className="flex items-center gap-2">
+          <Wallet size={18} />
+          Wallet
+        </Button>
+      </div>
+
+      {/* Profile Header */}
+      <div className="flex flex-col items-center text-center">
+        <div className="w-20 h-20 bg-indigo-500 text-white flex items-center justify-center rounded-full text-3xl font-bold shadow-lg">
+          {profile.username?.[0]?.toUpperCase() || "U"}
+        </div>
+        <h1 className="mt-3 text-2xl font-semibold text-gray-900">
+          Hey, <span className="text-indigo-600">{profile.username}</span> 👋
         </h1>
-        <p className="text-gray-500 text-sm">Anything interesting happening lately?</p>
+        <p className="text-gray-500 text-sm">Manage your account details below</p>
       </div>
 
-      {/* Profile Info */}
-      <div className="space-y-4">
-        <ProfileField label="Email" value={profile.email} />
-        <ProfileField label="Name" value={`${profile.firstName} ${profile.lastName}`} />
-        <ProfileField label="Bank" value={profile.bankName} />
-        <ProfileField label="Account" value={profile.accountNumber} />
+      {/* Editable Form */}
+      <div className="space-y-5">
+        <EditableField label="First Name" name="firstName" value={formData.firstName} editing={editing} onChange={handleChange} />
+        <EditableField label="Last Name" name="lastName" value={formData.lastName} editing={editing} onChange={handleChange} />
+        <EditableField label="Email" name="email" value={formData.email} editing={editing} onChange={handleChange} />
+        <EditableField label="Username" name="username" value={formData.username} editing={editing} onChange={handleChange} />
       </div>
 
-      {/* Edit Button */}
-      <div className="mt-6 flex justify-center">
-        <button className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2 rounded-lg hover:bg-indigo-700 shadow-md transition">
-          <Pencil size={18} />
-          Edit Profile
-        </button>
+      {/* Actions */}
+      <div className="mt-8 flex justify-center gap-3">
+        {!editing ? (
+          <Button onClick={() => setEditing(true)} className="flex items-center gap-2">
+            <Pencil size={18} />
+            Edit Profile
+          </Button>
+        ) : (
+          <>
+            <Button
+              onClick={handleSave}
+              disabled={saving}
+              className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+            >
+              {saving ? (
+                <>
+                  <span className="animate-spin rounded-full h-4 w-4 border-t-2 border-white border-solid"></span>
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Check size={18} />
+                  Save
+                </>
+              )}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => setEditing(false)}
+              className="flex items-center gap-2 bg-gray-200 hover:bg-gray-300"
+            >
+              <X size={18} />
+              Cancel
+            </Button>
+          </>
+        )}
       </div>
 
-      {/* Logout Button */}
-      <div className="mt-6 flex justify-center">
+      {/* Logout */}
+      <div className="text-center">
         <Button variant="destructive" onClick={handleLogout}>
           Logout
         </Button>
@@ -112,11 +197,32 @@ export default function ProfilePage() {
   );
 }
 
-function ProfileField({ label, value }: { label: string; value: string }) {
+function EditableField({
+  label,
+  name,
+  value,
+  editing,
+  onChange,
+}: {
+  label: string;
+  name: string;
+  value: string;
+  editing: boolean;
+  onChange: any;
+}) {
   return (
-    <div className="flex justify-between items-center border-b border-gray-200 pb-2">
-      <span className="text-gray-500 font-medium">{label}</span>
-      <span className="text-gray-800">{value || "—"}</span>
+    <div className="flex flex-col">
+      <label className="text-gray-500 text-sm font-medium mb-1">{label}</label>
+      {editing ? (
+        <input
+          name={name}
+          value={value}
+          onChange={onChange}
+          className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+      ) : (
+        <p className="text-gray-800 font-medium">{value || "—"}</p>
+      )}
     </div>
   );
 }

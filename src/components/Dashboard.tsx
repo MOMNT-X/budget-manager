@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Progress } from "./ui/progress";
 import { TrendingUp, TrendingDown, Target } from "lucide-react";
-import { getDashboardSummary } from "../config/api";
+import { getDashboardSummary } from "@/config/api";
+import { RecentTransactions } from "../components/RecentTransactions";
+import { CategoryBreakdown } from "../components/CategoryBreakdown";
 
 // Nigerian Naira formatting utility (safe)
 const formatNaira = (amount: number | undefined | null) => {
@@ -111,13 +113,14 @@ export function Dashboard() {
     monthlyExpenses,
     monthlyBudget,
     percentageChange,
+    remainingBudget,
   } = data;
 
 const walletBalanceNaira = walletBalance / 100;
 const monthlyExpensesNaira = monthlyExpenses / 100;
-const remainingBudget = monthlyBudget - monthlyExpensesNaira;
+const remainingBudgetNaira = remainingBudget/100;
 const budgetUsed = (monthlyExpensesNaira / monthlyBudget) * 100;
-const isOverBudget = monthlyExpensesNaira > monthlyBudget;
+const isOverBudget = monthlyExpensesNaira > monthlyBudget
 
 
   return (
@@ -197,7 +200,7 @@ const isOverBudget = monthlyExpensesNaira > monthlyBudget;
               }`}
             >
               {isOverBudget ? "-" : ""}
-              {formatNaira(Math.abs(remainingBudget))}
+              {formatNaira(Math.abs(remainingBudgetNaira))}
             </div>
             <p className="text-xs text-muted-foreground">
               {isOverBudget ? "exceeded by" : "left to spend"}
@@ -225,7 +228,7 @@ const isOverBudget = monthlyExpensesNaira > monthlyBudget;
               <div className="flex justify-between text-sm text-red-500">
                 <span>
                   Over budget by:{" "}
-                  {formatNaira(monthlyExpenses - monthlyBudget)}
+                  {formatNaira((monthlyExpenses - monthlyBudget)/100)}
                 </span>
                 <span>{(budgetUsed - 100).toFixed(1)}% over</span>
               </div>
@@ -233,6 +236,27 @@ const isOverBudget = monthlyExpensesNaira > monthlyBudget;
           </div>
         </CardContent>
       </Card>
+
+{/* Category Breakdown */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Category Breakdown</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <CategoryBreakdown />
+        </CardContent>
+      </Card>
+      
+      {/* Recent Transactions */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Transactions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <RecentTransactions />
+        </CardContent>
+      </Card>
+
     </div>
   );
 }
