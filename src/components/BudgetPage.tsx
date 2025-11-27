@@ -16,6 +16,7 @@ import { Plus, Target, TrendingUp, TrendingDown, Edit, Trash2, AlertTriangle, Ch
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { Alert, AlertDescription } from "./ui/alert";
 import { BASE_URL, sendBudgetCreatedNotification, sendBudgetThresholdAlert } from "@/config/api";
+import { ConfirmationDialog } from "./ui/confirmation-dialog";
 
 interface Budget {
   id: string;
@@ -116,6 +117,8 @@ export function BudgetPage() {
     message: string;
   }>({ open: false, title: '', message: '' });
   const [conflictingBudget, setConflictingBudget] = useState<any | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [budgetToDelete, setBudgetToDelete] = useState<string | null>(null);
   const [showConflictDialog, setShowConflictDialog] = useState(false);
 
   const colorOptions = [
@@ -262,12 +265,17 @@ export function BudgetPage() {
   };
 
   const handleDeleteBudget = async (budgetId: string) => {
-    if (!confirm('Are you sure you want to delete this budget?')) return;
+    setBudgetToDelete(budgetId);
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDeleteBudget = async () => {
+    if (!budgetToDelete) return;
 
     try {
       setError("");
 
-      const response = await fetch(`${api}/budgets/${budgetId}`, {
+      const response = await fetch(`${api}/budgets/${budgetToDelete}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
@@ -286,6 +294,7 @@ export function BudgetPage() {
         title: 'Budget Deleted',
         message: 'Your budget has been deleted successfully.'
       });
+      setBudgetToDelete(null);
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete budget');
@@ -837,6 +846,17 @@ export function BudgetPage() {
           </div>
         </div>
       )}
+
+      <ConfirmationDialog
+        open={deleteConfirmOpen}
+        onOpenChange={setDeleteConfirmOpen}
+        title="Delete Budget"
+        description="Are you sure you want to delete this budget? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="destructive"
+        onConfirm={confirmDeleteBudget}
+      />
 
       <Dialog open={showConflictDialog} onOpenChange={setShowConflictDialog}>
         <DialogContent className="sm:max-w-[500px]">

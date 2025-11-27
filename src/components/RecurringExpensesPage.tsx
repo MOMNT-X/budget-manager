@@ -28,6 +28,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -97,6 +98,8 @@ export function RecurringExpensesPage() {
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
   const [toggleLoading, setToggleLoading] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [expenseToDelete, setExpenseToDelete] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"all" | "active" | "paused">("all");
   const [selectedExpense, setSelectedExpense] = useState<RecurringExpense | null>(null);
@@ -648,9 +651,8 @@ export function RecurringExpensesPage() {
                     variant="destructive"
                     size="sm"
                     onClick={() => {
-                      if (confirm("Are you sure you want to delete this recurring expense?")) {
-                        handleDeleteExpense(expense.id);
-                      }
+                      setExpenseToDelete(expense.id);
+                      setDeleteConfirmOpen(true);
                     }}
                     disabled={deleteLoading === expense.id}
                   >
@@ -958,6 +960,23 @@ export function RecurringExpensesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmationDialog
+        open={deleteConfirmOpen}
+        onOpenChange={setDeleteConfirmOpen}
+        title="Delete Recurring Expense"
+        description="Are you sure you want to delete this recurring expense? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="destructive"
+        onConfirm={async () => {
+          if (expenseToDelete) {
+            await handleDeleteExpense(expenseToDelete);
+            setExpenseToDelete(null);
+          }
+        }}
+        loading={expenseToDelete ? deleteLoading === expenseToDelete : false}
+      />
     </div>
   );
 }

@@ -150,11 +150,16 @@ export function WalletPage() {
              transactionDate.getFullYear() === currentYear;
     });
 
-    const income = thisMonthTransactions
+    // Only count successful transactions in calculations
+    const successfulTransactions = thisMonthTransactions.filter(
+      t => (t.status || '').toLowerCase() === 'success'
+    );
+
+    const income = successfulTransactions
       .filter(t => t.type === 'DEPOSIT' || t.type === 'INCOME')
       .reduce((sum, t) => sum + t.amount, 0);
     
-    const expenses = thisMonthTransactions
+    const expenses = successfulTransactions
       .filter(t => t.type === 'EXPENSE' || t.type === 'WITHDRAWAL')
       .reduce((sum, t) => sum + t.amount, 0);
 
@@ -581,28 +586,22 @@ try {
                     </div>
                   </DialogContent>
                 </Dialog>
-                {/* Paystack Webview Modal */}
-                <Dialog open={depositModalOpen} onOpenChange={setDepositModalOpen}>
-                  <DialogContent className="sm:max-w-[720px] h-[80vh]">
-                    <DialogHeader>
-                      <DialogTitle>Complete Deposit</DialogTitle>
-                      <DialogDescription>Secure Paystack checkout inside the app.</DialogDescription>
-                    </DialogHeader>
-                    <div className="h-full">
-                      {depositAuthUrl ? (
-                        <iframe src={depositAuthUrl} title="Paystack" className="w-full h-[60vh] border rounded" />
-                      ) : (
-                        <div className="text-sm text-muted-foreground">Awaiting authorization URL...</div>
-                      )}
-                      {depositAuthUrl && (
-                        <div className="mt-3 flex justify-between">
-                          <Button variant="outline" onClick={() => window.open(depositAuthUrl!, '_blank')}>Open in new tab</Button>
-                          <Button onClick={() => setDepositModalOpen(false)}>Done</Button>
-                        </div>
-                      )}
-                    </div>
-                  </DialogContent>
-                </Dialog>
+                {/* Paystack Webview Full-Screen Overlay */}
+                <PaystackWebview
+                  open={depositModalOpen}
+                  onOpenChange={setDepositModalOpen}
+                  authorizationUrl={depositAuthUrl}
+                  onSuccess={async () => {
+                    toast.success("Payment successful! Refreshing wallet...");
+                    await handleRefresh();
+                  }}
+                  onClose={() => {
+                    setDepositAuthUrl(null);
+                  }}
+                  onError={(error) => {
+                    toast.error(error || "Payment failed");
+                  }}
+                />
 
                 <Dialog>
                   <DialogTrigger asChild>
@@ -726,19 +725,34 @@ try {
                     {transactions.slice(0, 10).map((transaction) => {
                       const Icon = getTransactionIcon(transaction.type);
                       const category = categories.find(c => c.id === transaction.categoryId);
+                      const status = (transaction.status || '').toLowerCase();
+                      const isFailed = status === 'failed' || status === 'blocked';
+                      const isSuccess = status === 'success';
                       
                         return (
-                        <div key={transaction.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 border rounded-lg space-y-2 sm:space-y-0">
+                        <div key={transaction.id} className={`flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 border rounded-lg space-y-2 sm:space-y-0 ${isFailed ? 'opacity-60 border-red-200 bg-red-50/30' : ''}`}>
                           <div className="flex items-start space-x-3 w-full sm:w-auto">
-                          <div className={`p-1.5 rounded-lg bg-muted ${getTransactionColor(transaction.type)} shrink-0`}>
+                          <div className={`p-1.5 rounded-lg bg-muted ${getTransactionColor(transaction.type)} shrink-0 ${isFailed ? 'opacity-50' : ''}`}>
                             <Icon className="h-4 w-4" />
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="font-medium truncate text-sm">
-                            {transaction.type === 'DEPOSIT' ? 'Wallet Deposit' : 
-                             transaction.type === 'INCOME' ? 'Income' : 
-                             transaction.description}
-                            </p>
+                            <div className="flex items-center gap-2">
+                              <p className={`font-medium truncate text-sm ${isFailed ? 'line-through text-muted-foreground' : ''}`}>
+                              {transaction.type === 'DEPOSIT' ? 'Wallet Deposit' : 
+                               transaction.type === 'INCOME' ? 'Income' : 
+                               transaction.description}
+                              </p>
+                              {isFailed && (
+                                <Badge variant="destructive" className="text-xs">
+                                  Failed
+                                </Badge>
+                              )}
+                              {isSuccess && (
+                                <Badge variant="default" className="text-xs bg-green-100 text-green-700 border-green-300">
+                                  Success
+                                </Badge>
+                              )}
+                            </div>
                             <div className="flex flex-wrap items-center gap-2">
                             {category && (
                               <Badge variant="secondary" className="flex items-center gap-1 text-xs">
@@ -757,7 +771,7 @@ try {
                           </div>
                           </div>
                           <div className="flex flex-col items-end w-full sm:w-auto">
-                          <p className={`font-medium text-base ${getTransactionColor(transaction.type)}`}>
+                          <p className={`font-medium text-base ${isFailed ? 'text-red-600' : getTransactionColor(transaction.type)}`}>
                             {(transaction.type === 'DEPOSIT' || transaction.type === 'INCOME') ? '+' : '-'}
                             {formatCurrency(transaction.amount)}
                           </p>

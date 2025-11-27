@@ -118,7 +118,7 @@ export function Dashboard() {
 
 const walletBalanceNaira = walletBalance / 100;
 const monthlyExpensesNaira = monthlyExpenses / 100;
-const remainingBudgetNaira = remainingBudget/100;
+const remainingBudgetNaira = remainingBudget;
 const budgetUsed = (monthlyExpensesNaira / monthlyBudget) * 100;
 const isOverBudget = monthlyExpensesNaira > monthlyBudget
 

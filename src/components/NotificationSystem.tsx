@@ -1,19 +1,24 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Bell, CheckCircle2, Info, AlertTriangle, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Bell, CheckCircle2, Info, AlertTriangle, X, Wallet, Target, DollarSign, TrendingUp } from "lucide-react";
 import { Button } from "./ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { Sheet, SheetContent } from "./ui/sheet";
+import { Badge } from "./ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { BASE_URL } from "@/config/api";
 
 type NotificationKind = "success" | "info" | "warning";
+type NotificationCategory = "transaction" | "budget" | "system";
 
 interface NotificationItem {
   id: string;
   title: string;
   message: string;
   type: NotificationKind;
+  category?: NotificationCategory;
   createdAt: string;
   read: boolean;
   resourceType?: string;
@@ -22,7 +27,13 @@ interface NotificationItem {
 
 const API_BASE_URL = BASE_URL;
 
-function getIcon(kind: NotificationKind) {
+function getIcon(kind: NotificationKind, category?: NotificationCategory) {
+  if (category === "transaction") {
+    return <DollarSign className="h-4 w-4 text-blue-600" />;
+  }
+  if (category === "budget") {
+    return <Target className="h-4 w-4 text-purple-600" />;
+  }
   switch (kind) {
     case "success":
       return <CheckCircle2 className="h-4 w-4 text-emerald-600" />;
@@ -33,12 +44,51 @@ function getIcon(kind: NotificationKind) {
   }
 }
 
+function getCategoryLabel(category?: NotificationCategory): string {
+  switch (category) {
+    case "transaction":
+      return "Transaction";
+    case "budget":
+      return "Budget Alert";
+    case "system":
+      return "System";
+    default:
+      return "General";
+  }
+}
+
+function getNavigationPath(notification: NotificationItem): string | null {
+  if (notification.resourceType && notification.resourceId) {
+    if (notification.resourceType === "transaction") {
+      return "/app/transactions";
+    }
+    if (notification.resourceType === "budget") {
+      return "/app/budget";
+    }
+    if (notification.resourceType === "wallet") {
+      return "/app/wallet";
+    }
+  }
+  
+  // Fallback based on category
+  if (notification.category === "transaction") {
+    return "/app/transactions";
+  }
+  if (notification.category === "budget") {
+    return "/app/budget";
+  }
+  
+  return null;
+}
+
 export default function NotificationSystem() {
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<NotificationCategory | "all">("all");
   const mounted = useRef(false);
 
   const authHeaders = useMemo<HeadersInit>(() => {
@@ -152,11 +202,27 @@ export default function NotificationSystem() {
     if (!notification.read) {
       markAsRead(notification.id);
     }
-    // Optional: Navigate to resource if resourceType and resourceId exist
-    // if (notification.resourceType && notification.resourceId) {
-    //   router.push(`/${notification.resourceType}/${notification.resourceId}`);
-    // }
+    const path = getNavigationPath(notification);
+    if (path) {
+      navigate(path);
+      setSheetOpen(false);
+      setOpen(false);
+    }
   };
+
+  const filteredItems = useMemo(() => {
+    if (activeCategory === "all") return items;
+    return items.filter(item => item.category === activeCategory);
+  }, [items, activeCategory]);
+
+  const categoryCounts = useMemo(() => {
+    return {
+      all: items.length,
+      transaction: items.filter(i => i.category === "transaction").length,
+      budget: items.filter(i => i.category === "budget").length,
+      system: items.filter(i => i.category === "system").length,
+    };
+  }, [items]);
 
   return (
     <div className="relative inline-flex">
@@ -200,14 +266,23 @@ export default function NotificationSystem() {
                   className={`w-full flex items-start gap-3 p-3 cursor-pointer hover:bg-accent ${!n.read ? 'bg-accent/50' : ''}`}
                   onClick={() => handleNotificationClick(n)}
                 >
-                  {getIcon(n.type)}
+                  {getIcon(n.type, n.category)}
                   <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium">
-                        {n.title}
-                      </p>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium">
+                            {n.title}
+                          </p>
+                          {n.category && (
+                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                              {getCategoryLabel(n.category)}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
                       <button 
-                        className="text-xs text-muted-foreground hover:text-foreground" 
+                        className="text-xs text-muted-foreground hover:text-foreground shrink-0" 
                         onClick={(e) => { 
                           e.preventDefault(); 
                           e.stopPropagation();
@@ -217,7 +292,7 @@ export default function NotificationSystem() {
                         <X className="h-3 w-3" />
                       </button>
                     </div>
-                    <p className="text-xs text-muted-foreground line-clamp-2">{n.message}</p>
+                    <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{n.message}</p>
                     <p className="mt-1 text-[10px] text-muted-foreground">
                       {new Date(n.createdAt).toLocaleString()}
                     </p>
@@ -252,40 +327,69 @@ export default function NotificationSystem() {
               Mark all read
             </Button>
           </div>
-          <div className="space-y-2 max-h-[82vh] overflow-y-auto pr-2">
-            {items.map((n) => (
-              <div 
-                key={n.id} 
-                className={`rounded-lg border p-3 flex gap-3 cursor-pointer hover:bg-accent ${!n.read ? 'bg-accent/50 border-primary/20' : 'opacity-80'}`}
-                onClick={() => handleNotificationClick(n)}
-              >
-                {getIcon(n.type)}
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium">{n.title}</p>
-                    <button
-                      className="text-muted-foreground hover:text-foreground"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        remove(n.id);
-                      }}
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
+          
+          <Tabs value={activeCategory} onValueChange={(v) => setActiveCategory(v as NotificationCategory | "all")} className="w-full">
+            <TabsList className="grid w-full grid-cols-4 mb-4">
+              <TabsTrigger value="all" className="text-xs">
+                All ({categoryCounts.all})
+              </TabsTrigger>
+              <TabsTrigger value="transaction" className="text-xs">
+                Transactions ({categoryCounts.transaction})
+              </TabsTrigger>
+              <TabsTrigger value="budget" className="text-xs">
+                Budget ({categoryCounts.budget})
+              </TabsTrigger>
+              <TabsTrigger value="system" className="text-xs">
+                System ({categoryCounts.system})
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value={activeCategory} className="mt-0">
+              <div className="space-y-2 max-h-[70vh] overflow-y-auto pr-2">
+                {filteredItems.map((n) => (
+                  <div 
+                    key={n.id} 
+                    className={`rounded-lg border p-3 flex gap-3 cursor-pointer hover:bg-accent transition-colors ${!n.read ? 'bg-accent/50 border-primary/20' : 'opacity-80'}`}
+                    onClick={() => handleNotificationClick(n)}
+                  >
+                    {getIcon(n.type, n.category)}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-medium">{n.title}</p>
+                            {n.category && (
+                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                                {getCategoryLabel(n.category)}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        <button
+                          className="text-muted-foreground hover:text-foreground shrink-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            remove(n.id);
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">{n.message}</p>
+                      <span className="text-[10px] text-muted-foreground block mt-1">
+                        {new Date(n.createdAt).toLocaleString()}
+                      </span>
+                    </div>
                   </div>
-                  <p className="text-sm text-muted-foreground">{n.message}</p>
-                  <span className="text-[10px] text-muted-foreground">
-                    {new Date(n.createdAt).toLocaleString()}
-                  </span>
-                </div>
+                ))}
+                {filteredItems.length === 0 && !isLoading && (
+                  <div className="text-sm text-muted-foreground text-center py-8">
+                    No {activeCategory === "all" ? "" : activeCategory} notifications
+                  </div>
+                )}
               </div>
-            ))}
-            {items.length === 0 && !isLoading && (
-              <div className="text-sm text-muted-foreground text-center py-8">
-                No notifications
-              </div>
-            )}
-          </div>
+            </TabsContent>
+          </Tabs>
         </SheetContent>
       </Sheet>
     </div>

@@ -1,7 +1,7 @@
 export const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
 // Common error extractor (NestJS often returns string | string[])
-const extractErrorMessage = (data: any, fallback: string) => {
+export const extractErrorMessage = (data: any, fallback: string) => {
   if (!data) return fallback;
   if (typeof data === "string") return data;
   if (typeof data.message === "string") return data.message;

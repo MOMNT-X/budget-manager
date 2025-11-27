@@ -2,6 +2,8 @@
 import { ArrowLeft, Eye, EyeOff, User, Mail, Lock, CreditCard, Building, CheckCircle, Sparkles, Shield, TrendingUp, Zap } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import Lottie from "lottie-react";
+import manageMoneyAnimation from "@/assets/Manage Money.json";
 import banks from "../components/banks";
 import { BASE_URL } from "@/config/api";
 
@@ -182,13 +184,33 @@ export default function SignupPage({ onAuthSuccess }: { onAuthSuccess?: () => vo
       )}
 
       {/* Left Hero Section */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
-        <div className="absolute inset-0">
-          <img src="/image/signup.jpg" alt="Financial freedom" className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/95 via-purple-900/90 to-pink-900/95"></div>
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900">
+        {/* Base gradient background layer */}
+        <div className="absolute inset-0 bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900"></div>
+        
+        {/* Animated blob background */}
+        <div className="absolute inset-0 opacity-20">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob"></div>
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-300 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-2000"></div>
         </div>
         
-        <div className="relative z-10 flex flex-col justify-center items-start p-16 text-white max-w-2xl">
+        {/* Blur overlay - creates frosted glass effect */}
+        <div className="absolute inset-0 backdrop-blur-2xl bg-gradient-to-br from-indigo-900/60 via-purple-900/60 to-pink-900/60"></div>
+        
+        {/* Additional blur layer for stronger effect */}
+        <div className="absolute inset-0 backdrop-blur-sm bg-white/5"></div>
+        
+        <div className="relative z-10 flex flex-col justify-center items-center p-16 text-white w-full">
+          {/* Animation */}
+          <div className="w-full max-w-lg mb-8">
+            <Lottie 
+              animationData={manageMoneyAnimation} 
+              loop={true}
+              className="w-full h-auto"
+            />
+          </div>
+          
+          <div className="w-full max-w-2xl">
           <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2 rounded-full mb-8 border border-white/20">
             <Sparkles className="w-4 h-4 text-yellow-300" />
             <span className="text-sm font-medium">Trusted by 50,000+ users</span>
@@ -205,7 +227,7 @@ export default function SignupPage({ onAuthSuccess }: { onAuthSuccess?: () => vo
             Take complete control of your finances with AI-powered insights, automated budgeting, and real-time tracking.
           </p>
 
-          <div className="grid grid-cols-1 gap-6 w-full max-w-md">
+          {/* <div className="grid grid-cols-1 gap-6 w-full max-w-md">
             <div className="flex items-start gap-4 bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/20 hover:bg-white/15 transition-all duration-300">
               <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-xl flex items-center justify-center flex-shrink-0">
                 <Shield className="w-6 h-6" />
@@ -235,6 +257,7 @@ export default function SignupPage({ onAuthSuccess }: { onAuthSuccess?: () => vo
                 <p className="text-sm text-white/75">Real-time bank account integration</p>
               </div>
             </div>
+          </div> */}
           </div>
         </div>
       </div>
@@ -496,6 +519,13 @@ export default function SignupPage({ onAuthSuccess }: { onAuthSuccess?: () => vo
         .animate-blob { animation: blob 7s infinite; }
         .animation-delay-2000 { animation-delay: 2s; }
         .animation-delay-4000 { animation-delay: 4s; }
+        
+        /* Blur overlay effect for left hero section */
+        .blur-overlay {
+          backdrop-filter: blur(20px) saturate(180%);
+          -webkit-backdrop-filter: blur(20px) saturate(180%);
+          background: linear-gradient(135deg, rgba(99, 102, 241, 0.4), rgba(139, 92, 246, 0.4), rgba(236, 72, 153, 0.4));
+        }
       `}</style>
     </div>
   );

@@ -12,6 +12,7 @@ export interface Transaction {
   category: string;
   date: string;
   type: 'DEPOSIT' | 'EXPENSE' | 'INCOME' | 'WITHDRAWAL';
+  status?: string;
 }
 
 // Function to format currency
@@ -81,6 +82,7 @@ const mapApiResponseToTransaction = (apiTransaction: any): Transaction => {
     category: mapCategory(apiTransaction.category || apiTransaction.type || 'Other'),
     date: apiTransaction.date || apiTransaction.createdAt || apiTransaction.timestamp || new Date().toISOString(),
     type: originalType === 'DEPOSIT' ? 'DEPOSIT' : 'EXPENSE',
+    status: apiTransaction.status || 'success', // Default to success if not provided
   };
 };
 
@@ -211,19 +213,34 @@ export function RecentTransactions({ limit = 10 }: RecentTransactionsProps) {
           {transactions.map((transaction) => {
             const IconComponent = categoryIcons[transaction.category as keyof typeof categoryIcons] || CalendarDays;
             const colorClass = categoryColors[transaction.category as keyof typeof categoryColors] || 'bg-gray-100 text-gray-600';
+            const status = (transaction.status || 'success').toLowerCase();
+            const isFailed = status === 'failed' || status === 'blocked';
+            const isSuccess = status === 'success';
             
             return (
-              <div key={transaction.id} className="flex items-center justify-between space-x-4">
+              <div key={transaction.id} className={`flex items-center justify-between space-x-4 ${isFailed ? 'opacity-60' : ''}`}>
                 <div className="flex items-center space-x-3">
                   <Avatar className="h-10 w-10">
-                    <AvatarFallback className={`${colorClass}`}>
+                    <AvatarFallback className={`${colorClass} ${isFailed ? 'opacity-50' : ''}`}>
                       <IconComponent className="h-4 w-4" />
                     </AvatarFallback>
                   </Avatar>
                   <div className="space-y-1">
-                    <p className="text-sm font-medium leading-none">
-                      {transaction.description}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className={`text-sm font-medium leading-none ${isFailed ? 'line-through text-muted-foreground' : ''}`}>
+                        {transaction.description}
+                      </p>
+                      {isFailed && (
+                        <Badge variant="destructive" className="text-xs">
+                          Failed
+                        </Badge>
+                      )}
+                      {isSuccess && (
+                        <Badge className="text-xs bg-green-100 text-green-700 border-green-300">
+                          Success
+                        </Badge>
+                      )}
+                    </div>
                     <div className="flex items-center space-x-2">
                       <Badge variant="secondary" className="text-xs">
                         {transaction.category}
@@ -236,9 +253,11 @@ export function RecentTransactions({ limit = 10 }: RecentTransactionsProps) {
                 </div>
                 <div className="text-right">
                   <p className={`font-bold ${
-                    (transaction.type === 'DEPOSIT' || transaction.type === 'INCOME') 
-                      ? 'text-green-600' 
-                      : 'text-red-600'
+                    isFailed 
+                      ? 'text-red-600' 
+                      : (transaction.type === 'DEPOSIT' || transaction.type === 'INCOME') 
+                        ? 'text-green-600' 
+                        : 'text-red-600'
                   }`}>
                     {(transaction.type === 'DEPOSIT' || transaction.type === 'INCOME') ? '+' : '-'}
                     {formatCurrency(transaction.amount)}

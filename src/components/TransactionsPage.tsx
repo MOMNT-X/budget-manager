@@ -123,11 +123,18 @@ export function TransactionsPage() {
       return sortOrder === "asc" ? result : -result;
     });
 
+  // Only count successful transactions in totals
   const totalIncome = transactions
-    .filter((t: Transaction) => asOriginalType(t) === 'DEPOSIT')
+    .filter((t: Transaction) => {
+      const status = (t.status || '').toLowerCase();
+      return asOriginalType(t) === 'DEPOSIT' && status === 'success';
+    })
     .reduce((sum: number, t: Transaction) => sum + Number(t.amount), 0);
   const totalExpenses = transactions
-    .filter((t: Transaction) => asOriginalType(t) === 'EXPENSE')
+    .filter((t: Transaction) => {
+      const status = (t.status || '').toLowerCase();
+      return asOriginalType(t) === 'EXPENSE' && status === 'success';
+    })
     .reduce((sum: number, t: Transaction) => sum + Number(t.amount), 0);
 
   // Get unique categories
@@ -337,8 +344,11 @@ export function TransactionsPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                paginatedTransactions.map((transaction) => (
-                  <TableRow key={transaction.id}>
+                paginatedTransactions.map((transaction) => {
+                  const status = (transaction.status || '').toLowerCase();
+                  const isFailed = status === 'failed' || status === 'blocked';
+                  return (
+                  <TableRow key={transaction.id} className={isFailed ? 'opacity-60 bg-red-50/30' : ''}>
                     <TableCell>
                       {new Date(transaction.timestamp).toLocaleDateString('en-NG', {
                         year: 'numeric',
@@ -346,7 +356,7 @@ export function TransactionsPage() {
                         day: 'numeric'
                       })}
                     </TableCell>
-                    <TableCell className="font-medium">
+                    <TableCell className={`font-medium ${isFailed ? 'line-through text-muted-foreground' : ''}`}>
                       {transaction.description}
                     </TableCell>
                     <TableCell>
@@ -359,20 +369,29 @@ export function TransactionsPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge 
-                        variant={transaction.status === 'success' ? 'success' : 
-                                transaction.status === 'pending' ? 'warning' : 'destructive'}
-                      >
-                        {transaction.status}
-                      </Badge>
+                      {(() => {
+                        const status = (transaction.status || '').toLowerCase();
+                        if (status === 'success') {
+                          return <Badge className="bg-green-100 text-green-700 border-green-300">Success</Badge>;
+                        } else if (status === 'pending') {
+                          return <Badge className="bg-yellow-100 text-yellow-700 border-yellow-300">Pending</Badge>;
+                        } else if (status === 'failed') {
+                          return <Badge variant="destructive">Failed</Badge>;
+                        } else if (status === 'blocked') {
+                          return <Badge className="bg-orange-100 text-orange-700 border-orange-300">Blocked</Badge>;
+                        } else {
+                          return <Badge variant="secondary">{transaction.status || 'Unknown'}</Badge>;
+                        }
+                      })()}
                     </TableCell>
                     <TableCell className="text-right">
-                      <span className={`font-medium ${getTransactionColor(transaction)}`}>
+                      <span className={`font-medium ${isFailed ? 'text-red-600' : getTransactionColor(transaction)}`}>
                         {getTransactionPrefix(transaction)}₦{(Number(transaction.amount)/100).toLocaleString('en-NG', { maximumFractionDigits: 2 })}
                       </span>
                     </TableCell>
                   </TableRow>
-                ))
+                  );
+                })
               )}
             </TableBody>
           </Table>
