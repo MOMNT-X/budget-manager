@@ -29,6 +29,7 @@ import {
 import { Alert, AlertDescription } from "./ui/alert";
 import { toast } from "sonner";
 import OnboardingTour from "@components/OnBoardingTour";
+import { PaystackWebview } from "./ui/paystack-webview";
 
 interface WalletData {
   balance: number;
