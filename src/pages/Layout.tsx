@@ -2,20 +2,21 @@ import { useState } from "react";
 import { Dashboard } from "../components/Dashboard";
 import { RecentTransactions } from "../components/RecentTransactions";
 import { CategoryBreakdown } from "../components/CategoryBreakdown";
-import { Header } from "@/components/Header";
+import { Header, PageType } from "@/components/Header";
 import { ExpensesPage } from "../components/ExpensesPage";
 import { TransactionsPage } from "../components/TransactionsPage";
 import { PayBillsPage } from "../components/PayBillsPage";
 import { WalletPage } from "../components/WalletPage";
 import { BudgetPage } from "../components/BudgetPage";
+import { BeneficiariesPage } from "../components/BeneficiariesPage";
+import { FinancialGoalsPage } from "../components/FinancialGoalsPage";
+import { RecurringExpensesPage } from "../components/RecurringExpensesPage";
 import NotificationSystem from "@/components/NotificationSystem";
 import SpendingInsightsPage from "../components/SpendingInsightsPage";
 import { AppProvider } from "@/contexts/AppContext";
 import { BottomNav } from "@/components/ui/bottom-nav";
 import { mockTransactions, mockCategoryData } from "../data/mockData";
 import { Toaster } from "@/components/ui/toaster";
-
-export type PageType = 'dashboard' | 'expenses' | 'transactions' | 'pay-bills' | 'wallet' | 'budget' | 'notifications' | 'spending-insights';
 
 function LayoutContent() {
   const [currentPage, setCurrentPage] = useState<PageType>('dashboard');
@@ -51,6 +52,12 @@ function LayoutContent() {
         return <NotificationSystem />;
       case 'spending-insights':
         return <SpendingInsightsPage />;
+      case 'beneficiaries':
+        return <BeneficiariesPage />;
+      case 'goals':
+        return <FinancialGoalsPage />;
+      case 'recurring-expenses':
+        return <RecurringExpensesPage />;
       default:
         return <div className="text-center text-muted-foreground">Page not found</div>;
     }
@@ -62,7 +69,7 @@ function LayoutContent() {
       <Toaster />
       {/* Main Content Area */}
 
-      <main className="w-full px-6 pb-24 pt-6 space-y-6">
+      <main className="safe-container pb-24 pt-6 space-y-6">
         {/* Optional Welcome Banner */}
         {currentPage === 'dashboard' && (
           <div className="bg-primary text-white p-4 rounded-lg shadow-md">

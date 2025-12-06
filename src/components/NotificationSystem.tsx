@@ -8,7 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Sheet, SheetContent } from "./ui/sheet";
 import { Badge } from "./ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
-import { BASE_URL } from "@/config/api";
+import { apiDelete, apiGet, apiPatch } from "@/utils/apiClient";
 
 type NotificationKind = "success" | "info" | "warning";
 type NotificationCategory = "transaction" | "budget" | "system";
@@ -24,8 +24,6 @@ interface NotificationItem {
   resourceType?: string;
   resourceId?: string;
 }
-
-const API_BASE_URL = BASE_URL;
 
 function getIcon(kind: NotificationKind, category?: NotificationCategory) {
   if (category === "transaction") {
@@ -91,25 +89,14 @@ export default function NotificationSystem() {
   const [activeCategory, setActiveCategory] = useState<NotificationCategory | "all">("all");
   const mounted = useRef(false);
 
-  const authHeaders = useMemo<HeadersInit>(() => {
-    const token = localStorage.getItem("access_token");
-    return token ? { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } : { "Content-Type": "application/json" };
-  }, []);
-
   const fetchNotifications = async () => {
     try {
       setIsLoading(true);
-      const res = await fetch(`${API_BASE_URL}/notifications`, { headers: authHeaders });
-      
-      if (!res.ok) {
-        if (res.status === 401) {
-          console.log("Unauthorized - user might need to log in");
-          return;
-        }
-        throw new Error("Failed to load notifications");
-      }
-      
-      const data = await res.json();
+      const data = await apiGet<{ notifications: NotificationItem[]; unreadCount: number }>('/notifications', {
+        cache: false,
+        dedupe: true,
+        timeout: 15000,
+      });
       setItems(data.notifications || []);
       setUnreadCount(data.unreadCount || 0);
     } catch (error) {
@@ -143,19 +130,13 @@ export default function NotificationSystem() {
       mounted.current = false; 
       clearInterval(intervalId); 
     };
-  }, [authHeaders]);
+  }, []);
 
   const markAllRead = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/notifications/read-all`, {
-        method: "PATCH",
-        headers: authHeaders,
-      });
-      
-      if (res.ok) {
-        setItems((prev) => prev.map((n) => ({ ...n, read: true })));
-        setUnreadCount(0);
-      }
+      await apiPatch('/notifications/read-all');
+      setItems((prev) => prev.map((n) => ({ ...n, read: true })));
+      setUnreadCount(0);
     } catch (error) {
       console.error("Error marking all as read:", error);
     }
@@ -163,17 +144,11 @@ export default function NotificationSystem() {
 
   const markAsRead = async (id: string) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/notifications/${id}/read`, {
-        method: "PATCH",
-        headers: authHeaders,
-      });
-      
-      if (res.ok) {
-        setItems((prev) => 
-          prev.map((n) => n.id === id ? { ...n, read: true } : n)
-        );
-        setUnreadCount((prev) => Math.max(0, prev - 1));
-      }
+      await apiPatch(`/notifications/${id}/read`);
+      setItems((prev) => 
+        prev.map((n) => n.id === id ? { ...n, read: true } : n)
+      );
+      setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (error) {
       console.error("Error marking notification as read:", error);
     }
@@ -181,17 +156,11 @@ export default function NotificationSystem() {
 
   const remove = async (id: string) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/notifications/${id}`, {
-        method: "DELETE",
-        headers: authHeaders,
-      });
-      
-      if (res.ok) {
-        const notification = items.find(n => n.id === id);
-        setItems((prev) => prev.filter((n) => n.id !== id));
-        if (notification && !notification.read) {
-          setUnreadCount((prev) => Math.max(0, prev - 1));
-        }
+      await apiDelete(`/notifications/${id}`);
+      const notification = items.find(n => n.id === id);
+      setItems((prev) => prev.filter((n) => n.id !== id));
+      if (notification && !notification.read) {
+        setUnreadCount((prev) => Math.max(0, prev - 1));
       }
     } catch (error) {
       console.error("Error deleting notification:", error);

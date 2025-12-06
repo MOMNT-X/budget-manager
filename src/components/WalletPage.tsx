@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
@@ -86,6 +86,9 @@ export function WalletPage() {
   const [payCategory, setPayCategory] = useState("");
   const [depositModalOpen, setDepositModalOpen] = useState(false);
   const [depositAuthUrl, setDepositAuthUrl] = useState<string | null>(null);
+  const [copiedAccount, setCopiedAccount] = useState(false);
+  const copyTimeoutRef = useRef<number | null>(null);
+  const [copiedAccountText, setCopiedAccountText] = useState<string | null>(null);
 
   // API calls
   const api = import.meta.env.VITE_API_URL || BASE_URL;
@@ -332,9 +335,35 @@ try {
   };
 
   const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success("Copied to clipboard");
+    navigator.clipboard.writeText(text).then(() => {
+      // show inline copied dropdown
+      setCopiedAccount(true);
+      setCopiedAccountText(text ? `****${text.slice(-4)}` : null);
+      // clear any existing timeout
+      if (copyTimeoutRef.current) {
+        window.clearTimeout(copyTimeoutRef.current);
+      }
+      copyTimeoutRef.current = window.setTimeout(() => {
+        setCopiedAccount(false);
+        setCopiedAccountText(null);
+        copyTimeoutRef.current = null;
+      }, 3000);
+
+      // also show global toast for accessibility/feedback
+      toast.success("Account number copied to clipboard");
+    }).catch((err) => {
+      console.error('Clipboard write failed', err);
+      toast.error('Failed to copy account number');
+    });
   };
+
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) {
+        window.clearTimeout(copyTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const getTransactionIcon = (type: string) => {
     switch (type) {
@@ -530,14 +559,27 @@ try {
                     <p className="font-medium">{walletData.bankName}</p>
                     <p className="text-white/90">{walletData.accountNumber}</p>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-white hover:bg-white/20"
-                    onClick={() => copyToClipboard(walletData.accountNumber)}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
+                    <div className="relative">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-white hover:bg-white/20"
+                        onClick={() => copyToClipboard(walletData.accountNumber)}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+
+                      <div
+                        role="status"
+                        aria-live="polite"
+                        className={`absolute right-0 mt-2 w-max rounded-md px-3 py-1 text-sm shadow-lg transition-all duration-300 transform origin-top-right flex items-center gap-2 ${copiedAccount ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1 pointer-events-none'}`}
+                      >
+                        <div className="flex items-center rounded-md bg-emerald-600 text-white px-3 py-1 shadow-md">
+                          <CheckCircle2 className="h-4 w-4 text-white mr-2" />
+                          <span className="text-sm font-medium">{copiedAccountText ? `Copied ${copiedAccountText}` : 'Account copied'}</span>
+                        </div>
+                      </div>
+                    </div>
                 </div>
               )}
 

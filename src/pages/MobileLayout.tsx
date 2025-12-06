@@ -1,9 +1,7 @@
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import { Header } from "@/components/Header";
+import { Header, PageType } from "@/components/Header";
 import { BottomNav } from "@/components/ui/bottom-nav";
 import { Toaster } from "@/components/ui/toaster";
-
-type PageType = 'dashboard' | 'expenses' | 'transactions' | 'pay-bills' | 'wallet' | 'budget' | 'notifications' | 'spending-insights';
 
 const routeToPage: Record<string, PageType> = {
   '/app/dashboard': 'dashboard',
@@ -14,6 +12,9 @@ const routeToPage: Record<string, PageType> = {
   '/app/budget': 'budget',
   '/app/notifications': 'notifications',
   '/app/insights': 'spending-insights',
+  '/app/beneficiaries': 'beneficiaries',
+  '/app/goals': 'goals',
+  '/app/recurring-expenses': 'recurring-expenses',
 };
 
 const pageToRoute: Record<PageType, string> = {
@@ -25,6 +26,9 @@ const pageToRoute: Record<PageType, string> = {
   'budget': '/app/budget',
   'notifications': '/app/notifications',
   'spending-insights': '/app/insights',
+  'beneficiaries': '/app/beneficiaries',
+  'goals': '/app/goals',
+  'recurring-expenses': '/app/recurring-expenses',
 };
 
 export default function MobileLayout() {
@@ -36,7 +40,7 @@ export default function MobileLayout() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Header currentPage={current} onPageChange={(p) => navigate(pageToRoute[p])} />
-      <main className="w-full px-6 pb-24 pt-6 space-y-6">
+      <main className="safe-container pb-24 pt-6 space-y-6">
          {/* Optional Welcome Banner */}
         {current === 'dashboard' && (
           <div className="bg-primary text-white p-4 rounded-lg shadow-md">

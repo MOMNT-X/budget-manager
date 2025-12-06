@@ -201,3 +201,21 @@ html {
 html, body {
   scroll-behavior: smooth;
 }
+
+@layer utilities {
+  .safe-container {
+    @apply mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8;
+  }
+
+  .stack-responsive {
+    @apply flex flex-col gap-3 sm:flex-row sm:items-center;
+  }
+
+  .card-grid-responsive {
+    @apply grid gap-4 sm:grid-cols-2 xl:grid-cols-4;
+  }
+
+  .scroll-x-padded {
+    @apply flex gap-2 overflow-x-auto px-2;
+  }
+}

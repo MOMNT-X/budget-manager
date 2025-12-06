@@ -15,8 +15,9 @@ import { Checkbox } from "./ui/checkbox";
 import { Plus, Target, TrendingUp, TrendingDown, Edit, Trash2, AlertTriangle, CheckCircle, Loader2, Calendar } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { Alert, AlertDescription } from "./ui/alert";
-import { BASE_URL, sendBudgetCreatedNotification, sendBudgetThresholdAlert } from "@/config/api";
+import { sendBudgetCreatedNotification, sendBudgetThresholdAlert } from "@/config/api";
 import { ConfirmationDialog } from "./ui/confirmation-dialog";
+import { apiClient, ApiError } from "@/utils/apiClient";
 
 interface Budget {
   id: string;
@@ -125,8 +126,6 @@ export function BudgetPage() {
     '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#ffeaa7', 
     '#dda0dd', '#ff7675', '#74b9ff', '#00b894', '#fdcb6e'
   ];
-  const api = BASE_URL;
-
   useEffect(() => {
     fetchData();
   }, []);
@@ -137,27 +136,15 @@ export function BudgetPage() {
       setError("");
 
       const userId = localStorage.getItem('userId');
-      const budgetsResponse = await fetch(`${api}/budgets/user/${userId}`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` },
-      });
-      if (!budgetsResponse.ok) throw new Error('Failed to fetch budgets');
-      const budgetsData = await budgetsResponse.json();
-
-      const categoriesResponse = await fetch(`${api}/categories`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` },
-      });
-      if (!categoriesResponse.ok) throw new Error('Failed to fetch categories');
-      const categoriesData = await categoriesResponse.json();
-
-      const summaryResponse = await fetch(`${api}/budgets/summary`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` },
-      });
-      if (!summaryResponse.ok) throw new Error('Failed to fetch summary');
-      const summaryData = await summaryResponse.json();
+      const [budgetsData, categoriesData, summaryData] = await Promise.all([
+        apiClient<Budget[]>(`/budgets/user/${userId}`, { cache: true, cacheTTL: 2 * 60 * 1000 }),
+        apiClient<Category[]>('/categories', { cache: true, cacheTTL: 2 * 60 * 1000 }),
+        apiClient<{ data: BudgetSummary }>('/budgets/summary', { cache: true, cacheTTL: 2 * 60 * 1000 }),
+      ]);
 
       setBudgets(budgetsData);
       setCategories(categoriesData);
-      setSummary(summaryData.data);
+      setSummary(summaryData?.data ?? summaryData);
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch data');
@@ -171,12 +158,8 @@ export function BudgetPage() {
       setCreateLoading(true);
       setError("");
 
-      const response = await fetch(`${api}/budgets`, {
+      const createdBudget = await apiClient('/budgets', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           categoryId: newBudget.categoryId,
           amount: parseFloat(newBudget.amount),
@@ -186,18 +169,6 @@ export function BudgetPage() {
           frequency: newBudget.recurring ? newBudget.frequency : undefined
         }),
       });
-
-      const responseData = await response.json();
-
-      if (!response.ok) {
-        if (response.status === 409 && responseData.existingBudget) {
-          setConflictingBudget(responseData.existingBudget);
-          setShowConflictDialog(true);
-          setIsDialogOpen(false);
-          return;
-        }
-        throw new Error(responseData.message || 'Failed to create budget');
-      }
 
       await fetchData();
       resetForm();
@@ -209,9 +180,15 @@ export function BudgetPage() {
         message: 'Your new budget has been created successfully.'
       });
 
-      try { await sendBudgetCreatedNotification(responseData); } catch {}
+      try { await sendBudgetCreatedNotification(createdBudget); } catch {}
 
     } catch (err) {
+      if (err instanceof ApiError && err.status === 409 && err.data?.existingBudget) {
+        setConflictingBudget(err.data.existingBudget);
+        setShowConflictDialog(true);
+        setIsDialogOpen(false);
+        return;
+      }
       setError(err instanceof Error ? err.message : 'Failed to create budget');
     } finally {
       setCreateLoading(false);
@@ -225,12 +202,8 @@ export function BudgetPage() {
       setCreateLoading(true);
       setError("");
 
-      const response = await fetch(`${api}/budgets/${editingBudget.id}`, {
+      await apiClient(`/budgets/${editingBudget.id}`, {
         method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           categoryId: newBudget.categoryId,
           amount: parseFloat(newBudget.amount),
@@ -240,12 +213,6 @@ export function BudgetPage() {
           frequency: newBudget.recurring ? newBudget.frequency : undefined
         }),
       });
-
-      const responseData = await response.json();
-
-      if (!response.ok) {
-        throw new Error(responseData.message || 'Failed to update budget');
-      }
 
       await fetchData();
       resetForm();
@@ -275,17 +242,7 @@ export function BudgetPage() {
     try {
       setError("");
 
-      const response = await fetch(`${api}/budgets/${budgetToDelete}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to delete budget');
-      }
+      await apiClient(`/budgets/${budgetToDelete}`, { method: 'DELETE' });
 
       await fetchData();
 
