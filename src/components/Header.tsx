@@ -3,11 +3,22 @@
 import { Button } from "./ui/button";
 import { useState } from "react";
 import { NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuLink, NavigationMenuList, NavigationMenuTrigger } from "./ui/navigation-menu";
-import { Plus, Settings, Menu, Home, Receipt, CreditCard, Banknote, Building, Target, CoinsIcon, X, User, Sparkles, Bell, TrendingUp } from "lucide-react";
+import { Plus, Settings, Menu, Home, Receipt, CreditCard, Banknote, Building, Target, CoinsIcon, X, User, Sparkles, Bell, TrendingUp, Users, Flag, RefreshCcw } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 import { useNavigate } from "react-router-dom";
 
-export type PageType = 'dashboard' | 'expenses' | 'transactions' | 'pay-bills' | 'wallet' | 'budget' | 'profile' | 'notifications' | 'spending-insights';
+export type PageType =
+  | 'dashboard'
+  | 'expenses'
+  | 'transactions'
+  | 'pay-bills'
+  | 'wallet'
+  | 'budget'
+  | 'notifications'
+  | 'spending-insights'
+  | 'beneficiaries'
+  | 'goals'
+  | 'recurring-expenses';
 
 interface HeaderProps {
   currentPage: PageType;
@@ -23,6 +34,12 @@ const navigationItems = [
   { id: 'budget' as PageType, label: 'Budget', icon: Target, gradient: 'from-teal-500 to-green-500' },
   { id: 'notifications' as PageType, label: 'Notifications', icon: Bell, gradient: 'from-amber-500 to-orange-500' },
   { id: 'spending-insights' as PageType, label: 'Insights', icon: TrendingUp, gradient: 'from-violet-500 to-purple-500' },
+];
+
+const secondaryNavigationItems = [
+  { id: 'beneficiaries' as PageType, label: 'Beneficiaries', icon: Users, description: 'Manage recipients for quick transfers' },
+  { id: 'goals' as PageType, label: 'Goals', icon: Flag, description: 'Track long-term savings goals' },
+  { id: 'recurring-expenses' as PageType, label: 'Recurring', icon: RefreshCcw, description: 'Automate fixed monthly bills' },
 ];
 
 export function Header({ currentPage, onPageChange }: HeaderProps) {
@@ -90,6 +107,38 @@ export function Header({ currentPage, onPageChange }: HeaderProps) {
                     </NavigationMenuItem>
                   );
                 })}
+                <NavigationMenuItem>
+                  <NavigationMenuTrigger className="rounded-2xl bg-white/60 text-gray-700 hover:bg-white/80">
+                    More
+                  </NavigationMenuTrigger>
+                  <NavigationMenuContent className="p-4">
+                    <ul className="grid gap-3 w-[260px]">
+                      {secondaryNavigationItems.map((item) => {
+                        const IconComponent = item.icon;
+                        return (
+                          <li key={item.id}>
+                            <NavigationMenuLink asChild>
+                              <button
+                                className="w-full rounded-xl border bg-white/80 px-3 py-3 text-left transition hover:shadow-md"
+                                onClick={() => onPageChange(item.id)}
+                              >
+                                <div className="flex items-start gap-3">
+                                  <div className="rounded-lg bg-primary/10 p-2 text-primary">
+                                    <IconComponent className="h-4 w-4" />
+                                  </div>
+                                  <div>
+                                    <p className="font-medium">{item.label}</p>
+                                    <p className="text-xs text-muted-foreground">{item.description}</p>
+                                  </div>
+                                </div>
+                              </button>
+                            </NavigationMenuLink>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </NavigationMenuContent>
+                </NavigationMenuItem>
               </NavigationMenuList>
             </NavigationMenu>
 
@@ -99,7 +148,7 @@ export function Header({ currentPage, onPageChange }: HeaderProps) {
                 variant="outline" 
                 size="sm" 
                 className="relative bg-white/70 backdrop-blur-sm border-white/50 hover:bg-white/90 hover:shadow-lg transition-all duration-300 rounded-xl px-4 py-2 group"
-                onClick={() => onPageChange('profile')}
+                onClick={() => navigate('/profile')}
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-gray-100 to-blue-100 opacity-0 group-hover:opacity-100 rounded-xl transition-opacity duration-300"></div>
                 <div className="relative flex items-center">

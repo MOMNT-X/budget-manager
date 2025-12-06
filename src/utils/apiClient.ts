@@ -5,6 +5,8 @@ interface RequestOptions extends RequestInit {
   retryDelay?: number;
   cache?: boolean;
   cacheTTL?: number; // Time to live in milliseconds
+  dedupe?: boolean;
+  timeout?: number;
 }
 
 interface CacheEntry {
@@ -15,6 +17,7 @@ interface CacheEntry {
 
 // Simple in-memory cache
 const cache = new Map<string, CacheEntry>();
+const inFlightRequests = new Map<string, Promise<any>>();
 
 // Clean up expired cache entries
 const cleanupCache = () => {
@@ -42,6 +45,17 @@ const getAuthHeaders = (): HeadersInit => {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const serializeBody = (body: BodyInit | null | undefined) => {
+  if (!body) return "";
+  if (typeof body === "string") return body;
+  if (body instanceof URLSearchParams) return body.toString();
+  try {
+    return JSON.stringify(body);
+  } catch {
+    return `[unserializable:${body.constructor?.name ?? "body"}]`;
+  }
+};
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -62,12 +76,18 @@ export const apiClient = async <T = any>(
     retryDelay = 1000,
     cache: useCache = false,
     cacheTTL = 5 * 60 * 1000, // 5 minutes default
+    dedupe = true,
+    timeout,
     ...fetchOptions
   } = options;
 
+  const normalizedMethod = (fetchOptions.method || "GET").toUpperCase();
+  const serializedBody = serializeBody(fetchOptions.body);
+  const requestKey = `${normalizedMethod}:${path}:${serializedBody}`;
+
   // Check cache for GET requests
-  const cacheKey = `${path}:${JSON.stringify(fetchOptions.body || {})}`;
-  if (useCache && fetchOptions.method === undefined || fetchOptions.method === "GET") {
+  const cacheKey = requestKey;
+  if (useCache && (fetchOptions.method === undefined || fetchOptions.method === "GET")) {
     const cached = cache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < cached.ttl) {
       return cached.data;
@@ -83,11 +103,38 @@ export const apiClient = async <T = any>(
   let lastError: Error | null = null;
   let attempt = 0;
 
-  while (attempt <= retries) {
+  if (dedupe) {
+    const inFlight = inFlightRequests.get(requestKey);
+    if (inFlight) {
+      return inFlight;
+    }
+  }
+
+  const executeRequest = async (): Promise<T> => {
+    const controller = timeout ? new AbortController() : null;
+    const userSignal = fetchOptions.signal;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+    if (controller && userSignal) {
+      if (userSignal.aborted) {
+        controller.abort(userSignal.reason);
+      } else {
+        const onAbort = () => controller.abort(userSignal.reason);
+        userSignal.addEventListener("abort", onAbort, { once: true });
+      }
+    }
+
+    if (controller && timeout) {
+      timeoutId = setTimeout(() => {
+        controller.abort(new Error("Request timed out"));
+      }, timeout);
+    }
+
     try {
       const response = await fetch(url, {
         ...fetchOptions,
         headers,
+        signal: controller ? controller.signal : fetchOptions.signal,
       });
 
       const data = await response.json().catch(() => ({}));
@@ -110,6 +157,21 @@ export const apiClient = async <T = any>(
       }
 
       return data;
+    } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    }
+  };
+
+  while (attempt <= retries) {
+    try {
+      const promise = executeRequest();
+      if (dedupe) {
+        inFlightRequests.set(requestKey, promise);
+      }
+      const data = await promise;
+      return data;
     } catch (error) {
       lastError = error as Error;
 
@@ -127,6 +189,10 @@ export const apiClient = async <T = any>(
       const delay = retryDelay * Math.pow(2, attempt);
       await sleep(delay);
       attempt++;
+    } finally {
+      if (dedupe) {
+        inFlightRequests.delete(requestKey);
+      }
     }
   }
 

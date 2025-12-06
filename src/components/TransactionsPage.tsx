@@ -185,13 +185,13 @@ export function TransactionsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="stack-responsive justify-between">
         <div>
           <h2 className="text-2xl font-bold">Transactions</h2>
           <p className="text-muted-foreground">Complete history of all your financial transactions</p>
         </div>
-        <div className="flex items-center space-x-2">
-          <Button variant="outline" size="sm" disabled={loading}>
+        <div className="stack-responsive sm:flex-row sm:items-center sm:justify-end w-full sm:w-auto">
+          <Button variant="outline" size="sm" disabled={loading} className="w-full sm:w-auto">
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
@@ -253,8 +253,8 @@ export function TransactionsPage() {
           <CardTitle>Filter Transactions</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
+          <div className="stack-responsive gap-4">
+            <div className="flex-1 w-full">
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -267,7 +267,7 @@ export function TransactionsPage() {
               </div>
             </div>
             <Select value={filterType} onValueChange={setFilterType} disabled={loading}>
-              <SelectTrigger className="w-40">
+              <SelectTrigger className="w-full sm:w-40">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -277,7 +277,7 @@ export function TransactionsPage() {
               </SelectContent>
             </Select>
             <Select value={filterCategory} onValueChange={setFilterCategory} disabled={loading}>
-              <SelectTrigger className="w-40">
+              <SelectTrigger className="w-full sm:w-40">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -304,97 +304,98 @@ export function TransactionsPage() {
             Transaction History ({loading ? '...' : filteredTransactions.length} transactions)
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>
-                  <Button variant="ghost" size="sm" onClick={() => handleSort('date')} disabled={loading}>
-                    Date
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
-                  </Button>
-                </TableHead>
-                <TableHead>
-                  <Button variant="ghost" size="sm" onClick={() => handleSort('description')} disabled={loading}>
-                    Description
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
-                  </Button>
-                </TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">
-                  <Button variant="ghost" size="sm" onClick={() => handleSort('amount')} disabled={loading}>
-                    Amount
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
-                  </Button>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                // Show skeleton rows while loading
-                Array.from({ length: 5 }).map((_, index) => (
-                  <TableRowSkeleton key={index} />
-                ))
-              ) : paginatedTransactions.length === 0 ? (
+        <CardContent className="space-y-4">
+          <div className="w-full overflow-x-auto">
+            <Table className="min-w-[720px]">
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">
-                    No transactions found
-                  </TableCell>
+                  <TableHead>
+                    <Button variant="ghost" size="sm" onClick={() => handleSort('date')} disabled={loading}>
+                      Date
+                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button variant="ghost" size="sm" onClick={() => handleSort('description')} disabled={loading}>
+                      Description
+                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">
+                    <Button variant="ghost" size="sm" onClick={() => handleSort('amount')} disabled={loading}>
+                      Amount
+                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </TableHead>
                 </TableRow>
-              ) : (
-                paginatedTransactions.map((transaction) => {
-                  const status = (transaction.status || '').toLowerCase();
-                  const isFailed = status === 'failed' || status === 'blocked';
-                  return (
-                  <TableRow key={transaction.id} className={isFailed ? 'opacity-60 bg-red-50/30' : ''}>
-                    <TableCell>
-                      {new Date(transaction.timestamp).toLocaleDateString('en-NG', {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric'
-                      })}
-                    </TableCell>
-                    <TableCell className={`font-medium ${isFailed ? 'line-through text-muted-foreground' : ''}`}>
-                      {transaction.description}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">{transaction.category}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={transaction.originalType === 'DEPOSIT' ? 'success' :
-                        transaction.originalType === 'EXPENSE' ? 'default' : 'destructive'}>
-                        {getTransactionTypeLabel(transaction)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {(() => {
-                        const status = (transaction.status || '').toLowerCase();
-                        if (status === 'success') {
-                          return <Badge className="bg-green-100 text-green-700 border-green-300">Success</Badge>;
-                        } else if (status === 'pending') {
-                          return <Badge className="bg-yellow-100 text-yellow-700 border-yellow-300">Pending</Badge>;
-                        } else if (status === 'failed') {
-                          return <Badge variant="destructive">Failed</Badge>;
-                        } else if (status === 'blocked') {
-                          return <Badge className="bg-orange-100 text-orange-700 border-orange-300">Blocked</Badge>;
-                        } else {
-                          return <Badge variant="secondary">{transaction.status || 'Unknown'}</Badge>;
-                        }
-                      })()}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <span className={`font-medium ${isFailed ? 'text-red-600' : getTransactionColor(transaction)}`}>
-                        {getTransactionPrefix(transaction)}₦{(Number(transaction.amount)/100).toLocaleString('en-NG', { maximumFractionDigits: 2 })}
-                      </span>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  Array.from({ length: 5 }).map((_, index) => (
+                    <TableRowSkeleton key={index} />
+                  ))
+                ) : paginatedTransactions.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8">
+                      No transactions found
                     </TableCell>
                   </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
+                ) : (
+                  paginatedTransactions.map((transaction) => {
+                    const status = (transaction.status || '').toLowerCase();
+                    const isFailed = status === 'failed' || status === 'blocked';
+                    return (
+                    <TableRow key={transaction.id} className={isFailed ? 'opacity-60 bg-red-50/30' : ''}>
+                      <TableCell>
+                        {new Date(transaction.timestamp).toLocaleDateString('en-NG', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        })}
+                      </TableCell>
+                      <TableCell className={`font-medium ${isFailed ? 'line-through text-muted-foreground' : ''}`}>
+                        {transaction.description}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">{transaction.category}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={transaction.originalType === 'DEPOSIT' ? 'success' :
+                          transaction.originalType === 'EXPENSE' ? 'default' : 'destructive'}>
+                          {getTransactionTypeLabel(transaction)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {(() => {
+                          const status = (transaction.status || '').toLowerCase();
+                          if (status === 'success') {
+                            return <Badge className="bg-green-100 text-green-700 border-green-300">Success</Badge>;
+                          } else if (status === 'pending') {
+                            return <Badge className="bg-yellow-100 text-yellow-700 border-yellow-300">Pending</Badge>;
+                          } else if (status === 'failed') {
+                            return <Badge variant="destructive">Failed</Badge>;
+                          } else if (status === 'blocked') {
+                            return <Badge className="bg-orange-100 text-orange-700 border-orange-300">Blocked</Badge>;
+                          } else {
+                            return <Badge variant="secondary">{transaction.status || 'Unknown'}</Badge>;
+                          }
+                        })()}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <span className={`font-medium ${isFailed ? 'text-red-600' : getTransactionColor(transaction)}`}>
+                          {getTransactionPrefix(transaction)}₦{(Number(transaction.amount)/100).toLocaleString('en-NG', { maximumFractionDigits: 2 })}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
           
           {/* Pagination */}
           {!loading && totalPages > 1 && (

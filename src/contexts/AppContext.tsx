@@ -1,7 +1,8 @@
 'use client'
-import { BASE_URL } from '@/config/api';
+
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { toast } from 'sonner';
+import { apiGet } from '@/utils/apiClient';
 
 // Types
 interface WalletData {
@@ -148,12 +149,6 @@ export function AppProvider({ children }: AppProviderProps) {
   const updateLastFetched = (key: keyof typeof lastFetched) => {
     setLastFetched(prev => ({ ...prev, [key]: Date.now() }));
   };
-const api = BASE_URL;
-  const getAuthHeaders = () => ({
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-  });
-
   const fetchWalletData = async (force = false) => {
     if (!force && !isDataStale(lastFetched.wallet) && walletData) {
       return; // Use cached data
@@ -161,11 +156,11 @@ const api = BASE_URL;
 
     updateLoading('wallet', true);
     try {
-      const response = await fetch(`${api}/wallet/balance`, {
-        headers: getAuthHeaders()
+      const data = await apiGet<WalletData>('/wallet/balance', {
+        cache: true,
+        cacheTTL: CACHE_DURATION,
+        dedupe: true,
       });
-      if (!response.ok) throw new Error('Failed to fetch wallet balance');
-      const data = await response.json();
       setWalletData(data);
       updateLastFetched('wallet');
     } catch (error) {
@@ -183,11 +178,11 @@ const api = BASE_URL;
 
     updateLoading('transactions', true);
     try {
-      const response = await fetch(`${api}/transactions`, {
-        headers: getAuthHeaders()
+      const data = await apiGet<Transaction[]>('/transactions', {
+        cache: true,
+        cacheTTL: CACHE_DURATION,
+        dedupe: true,
       });
-      if (!response.ok) throw new Error('Failed to fetch transactions');
-      const data = await response.json();
       setTransactions(data);
       updateLastFetched('transactions');
     } catch (error) {
@@ -205,11 +200,11 @@ const api = BASE_URL;
 
     updateLoading('categories', true);
     try {
-      const response = await fetch(`${api}/categories`, {
-        headers: getAuthHeaders()
+      const data = await apiGet<Category[]>('/categories', {
+        cache: true,
+        cacheTTL: CACHE_DURATION,
+        dedupe: true,
       });
-      if (!response.ok) throw new Error('Failed to fetch categories');
-      const data = await response.json();
       setCategories(data);
       updateLastFetched('categories');
     } catch (error) {
@@ -227,11 +222,11 @@ const api = BASE_URL;
 
     updateLoading('budgets', true);
     try {
-      const response = await fetch(`${api}/budgets`, {
-        headers: getAuthHeaders()
+      const data = await apiGet<Budget[]>('/budgets', {
+        cache: true,
+        cacheTTL: CACHE_DURATION,
+        dedupe: true,
       });
-      if (!response.ok) throw new Error('Failed to fetch budgets');
-      const data = await response.json();
       setBudgets(data);
       updateLastFetched('budgets');
     } catch (error) {
@@ -249,11 +244,11 @@ const api = BASE_URL;
 
     updateLoading('expenses', true);
     try {
-      const response = await fetch(`${api}/expenses`, {
-        headers: getAuthHeaders()
+      const data = await apiGet<Expense[]>('/expenses', {
+        cache: true,
+        cacheTTL: CACHE_DURATION,
+        dedupe: true,
       });
-      if (!response.ok) throw new Error('Failed to fetch expenses');
-      const data = await response.json();
       setExpenses(data);
       updateLastFetched('expenses');
     } catch (error) {
@@ -271,11 +266,11 @@ const api = BASE_URL;
 
     updateLoading('dashboard', true);
     try {
-      const response = await fetch(`${api}/dashboard/summary`, {
-        headers: getAuthHeaders()
+      const data = await apiGet<DashboardSummary>('/dashboard/summary', {
+        cache: true,
+        cacheTTL: CACHE_DURATION,
+        dedupe: true,
       });
-      if (!response.ok) throw new Error('Failed to fetch dashboard summary');
-      const data = await response.json();
       setDashboardSummary(data);
       updateLastFetched('dashboard');
     } catch (error) {
@@ -312,8 +307,10 @@ const api = BASE_URL;
   useEffect(() => {
     const initializeApp = async () => {
       await Promise.all([
-        fetchCategories(), // Fetch categories first as they're needed by other components
+        fetchCategories(),
         fetchDashboardSummary(),
+        fetchWalletData(),
+        fetchTransactions(),
       ]);
     };
 
