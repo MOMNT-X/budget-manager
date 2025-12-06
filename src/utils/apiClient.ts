@@ -1,4 +1,15 @@
-import { BASE_URL, extractErrorMessage } from "@/config/api";
+import { toast } from "sonner";
+
+const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+
+const extractErrorMessage = (data: any, fallback: string) => {
+  if (!data) return fallback;
+  if (typeof data === "string") return data;
+  if (typeof data.message === "string") return data.message;
+  if (Array.isArray(data.message)) return data.message.join(", ");
+  if (data.error) return String(data.error);
+  return fallback;
+};
 
 interface RequestOptions extends RequestInit {
   retries?: number;
@@ -53,6 +64,29 @@ const serializeBody = (body: BodyInit | null | undefined) => {
     return JSON.stringify(body);
   } catch {
     return `[unserializable:${body.constructor?.name ?? "body"}]`;
+  }
+};
+
+const ERROR_NOTIFIED = Symbol("api-error-notified");
+
+const notifyRequestError = (error: unknown, url: string) => {
+  if (!error) return;
+  const errObj = error as Record<string | symbol, unknown>;
+  if (errObj && errObj[ERROR_NOTIFIED]) return;
+
+  const message =
+    error instanceof ApiError
+      ? error.message
+      : error instanceof Error
+        ? error.message
+        : "Request failed";
+
+  toast.error(message || "Request failed", {
+    description: url,
+  });
+
+  if (errObj) {
+    errObj[ERROR_NOTIFIED] = true;
   }
 };
 
@@ -177,6 +211,7 @@ export const apiClient = async <T = any>(
 
       // Don't retry on 4xx errors (client errors)
       if (error instanceof ApiError && error.status && error.status >= 400 && error.status < 500) {
+        notifyRequestError(error, url);
         throw error;
       }
 
@@ -196,7 +231,9 @@ export const apiClient = async <T = any>(
     }
   }
 
-  throw lastError || new Error("Request failed after retries");
+  const finalError = lastError || new Error("Request failed after retries");
+  notifyRequestError(finalError, url);
+  throw finalError;
 };
 
 // Helper to cancel requests (for component unmounts)
