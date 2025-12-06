@@ -85,6 +85,27 @@ export function Header({ currentPage, onPageChange }: HeaderProps) {
           </div>
         </div>
 
+        {/* Center navigation for larger screens */}
+        <nav className="hidden md:flex items-center gap-3 mx-6">
+          {navigationItems.map((item) => {
+            const Icon = item.icon;
+            const active = currentPage === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => handleNavigate(item.id)}
+                className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-300 ${active ? 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-lg scale-100' : 'bg-transparent text-muted-foreground hover:bg-white/5'}`}
+                aria-current={active ? 'page' : undefined}
+              >
+                <span className={`flex items-center justify-center h-8 w-8 rounded-md ${active ? 'bg-white/20' : 'bg-muted'} text-white`}>
+                  <Icon className="h-4 w-4" />
+                </span>
+                <span className="hidden lg:inline-flex text-sm font-medium">{item.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
@@ -105,36 +126,35 @@ export function Header({ currentPage, onPageChange }: HeaderProps) {
             </SheetTrigger>
             <SheetContent
               side="right"
-              className="flex w-[320px] flex-col gap-6 bg-gradient-to-b from-white via-blue-50 to-purple-50"
+              className="flex w-[360px] flex-col gap-6 bg-gradient-to-b from-white via-blue-50 to-purple-50 p-6"
             >
               {menuSections.map((section) => (
-                <div key={section.title} className="space-y-2">
+                <div key={section.title} className="space-y-3">
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     {section.title}
                   </p>
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     {section.items.map((item) => {
                       const Icon = item.icon;
                       const active = currentPage === item.id;
                       return (
-                        <Button
+                        <button
                           key={item.id}
-                          variant={active ? "default" : "ghost"}
-                          className={`w-full justify-start gap-3 rounded-xl ${
-                            active ? "shadow-lg" : ""
-                          }`}
                           onClick={() => handleNavigate(item.id)}
+                          className={`w-full flex items-center gap-3 rounded-xl px-3 py-2 transition-colors ${active ? 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow' : 'hover:bg-white/50 bg-transparent'}`}
                         >
-                          <Icon className="h-4 w-4" />
+                          <span className={`flex items-center justify-center h-9 w-9 rounded-lg ${active ? 'bg-white/20' : 'bg-muted'} text-white`}>
+                            <Icon className="h-4 w-4" />
+                          </span>
                           <div className="flex flex-col items-start">
-                            <span>{item.label}</span>
+                            <span className="font-medium">{item.label}</span>
                             {"description" in item && item.description && (
                               <span className="text-xs text-muted-foreground">
                                 {item.description}
                               </span>
                             )}
                           </div>
-                        </Button>
+                        </button>
                       );
                     })}
                   </div>
