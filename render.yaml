@@ -4,6 +4,10 @@ services:
     env: node
     buildCommand: npm install && npm run build
     startCommand: npm run start
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
     envVars:
       - key: NODE_VERSION
         value: 20.0.0
