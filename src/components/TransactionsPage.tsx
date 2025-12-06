@@ -61,19 +61,11 @@ export function TransactionsPage() {
     return 'EXPENSE';
   };
 
-  // Fetch transactions with filters
+  // Fetch transactions once and reuse data locally
   const fetchTransactions = useCallback(async () => {
     try {
       setLoading(true);
-      const params: any = {
-        sortBy,
-        sortOrder,
-      };
-      if (filterType !== "all") params.type = filterType.toUpperCase();
-      if (filterCategory !== "all") params.category = filterCategory;
-      if (searchTerm) params.search = searchTerm;
-
-      const res = await getTransactions(params);
+      const res = await getTransactions();
       const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : res?.items || [];
       setTransactions(list);
       setError(null);
@@ -83,7 +75,7 @@ export function TransactionsPage() {
     } finally {
       setLoading(false);
     }
-  }, [filterType, filterCategory, sortBy, sortOrder, searchTerm]);
+  }, []);
 
   useEffect(() => {
     fetchTransactions();
@@ -194,6 +186,10 @@ export function TransactionsPage() {
           <Button variant="outline" size="sm" disabled={loading} className="w-full sm:w-auto">
             <Download className="h-4 w-4 mr-2" />
             Export
+          </Button>
+          <Button variant="ghost" size="sm" onClick={fetchTransactions} disabled={loading} className="w-full sm:w-auto">
+            <Loader2 className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
           </Button>
         </div>
       </div>
