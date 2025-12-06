@@ -12,12 +12,13 @@ A Vite + React application showcasing a modern personal finance experience with 
 
 ## Production Deployment
 - Build artifacts are emitted to `dist/`. Use this directory for any "Publish Directory" or static hosting setting.
-- A `_redirects` file in `public/` rewrites every request (`/*`) to `/index.html`. This guarantees React Router always receives the URL, preventing 404s when a user refreshes or deep-links to a nested page such as `/app/transactions`.
-- Render deployments are managed via `render.yaml`. The service now includes a rewrite rule that mirrors the `_redirects` behavior, so both Docker-based and static Render services return the SPA shell for unknown paths.
+- The production server uses `serve` with SPA mode (`-s` flag) to handle routing. This ensures all routes are served through `index.html`, preventing 404s when a user refreshes or deep-links to a nested page such as `/app/transactions`.
+- A `serve.json` configuration file provides additional routing rules and cache headers for optimal performance.
+- Render deployments are managed via `render.yaml`. The service runs `npm start` which uses the `serve` package with SPA support.
 
 After every deploy:
-1. Run `npm run build && npm run preview` locally to ensure the bundle works.
+1. Run `npm run build && npm run start` locally to test the production bundle with the same server that runs in production.
 2. Deploy the updated build (Render automatically runs `npm run build`).
-3. Test a few direct URLs (`/signup`, `/app/transactions`, etc.) in the hosted environment to confirm the rewrite is active.
+3. Test direct URLs (`/signup`, `/app/transactions`, etc.) in the hosted environment to confirm routing works correctly.
 
-With the rewrite rules in place, you can safely demo the production site without encountering 404 errors on nested routes.
+With the `serve` package handling SPA routing, nested routes will work correctly on Render without 404 errors.
