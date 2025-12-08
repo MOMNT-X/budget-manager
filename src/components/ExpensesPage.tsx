@@ -207,14 +207,14 @@ export function ExpensesPage() {
   return (
     <div className="space-y-6">
       {/* Header with filters */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="stack-responsive justify-between">
         <div>
           <h2 className="text-2xl font-bold">Expenses</h2>
           <p className="text-muted-foreground">Track and analyze your spending patterns</p>
         </div>
-        <div className="flex items-center space-x-2 bg-white">
+        <div className="stack-responsive w-full sm:w-auto sm:justify-end">
           <Select value={selectedPeriod} onValueChange={setSelectedPeriod} disabled={loading}>
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="w-full sm:w-44">
               <Calendar className="h-4 w-4 mr-2" />
               <SelectValue />
             </SelectTrigger>
@@ -237,7 +237,7 @@ export function ExpensesPage() {
             </SelectContent>
           </Select>
           <Select value={selectedCategory} onValueChange={setSelectedCategory} disabled={loading}>
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="w-full sm:w-44">
               <Filter className="h-4 w-4 mr-2" />
               <SelectValue />
             </SelectTrigger>

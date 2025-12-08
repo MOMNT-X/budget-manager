@@ -1,10 +1,23 @@
-import { BASE_URL, extractErrorMessage } from "@/config/api";
+import { toast } from "sonner";
+
+const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+
+const extractErrorMessage = (data: any, fallback: string) => {
+  if (!data) return fallback;
+  if (typeof data === "string") return data;
+  if (typeof data.message === "string") return data.message;
+  if (Array.isArray(data.message)) return data.message.join(", ");
+  if (data.error) return String(data.error);
+  return fallback;
+};
 
 interface RequestOptions extends RequestInit {
   retries?: number;
   retryDelay?: number;
   cache?: boolean;
   cacheTTL?: number; // Time to live in milliseconds
+  dedupe?: boolean;
+  timeout?: number;
 }
 
 interface CacheEntry {
@@ -15,6 +28,7 @@ interface CacheEntry {
 
 // Simple in-memory cache
 const cache = new Map<string, CacheEntry>();
+const inFlightRequests = new Map<string, Promise<any>>();
 
 // Clean up expired cache entries
 const cleanupCache = () => {
@@ -42,6 +56,40 @@ const getAuthHeaders = (): HeadersInit => {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const serializeBody = (body: BodyInit | null | undefined) => {
+  if (!body) return "";
+  if (typeof body === "string") return body;
+  if (body instanceof URLSearchParams) return body.toString();
+  try {
+    return JSON.stringify(body);
+  } catch {
+    return `[unserializable:${body.constructor?.name ?? "body"}]`;
+  }
+};
+
+const ERROR_NOTIFIED = Symbol("api-error-notified");
+
+const notifyRequestError = (error: unknown, url: string) => {
+  if (!error) return;
+  const errObj = error as Record<string | symbol, unknown>;
+  if (errObj && errObj[ERROR_NOTIFIED]) return;
+
+  const message =
+    error instanceof ApiError
+      ? error.message
+      : error instanceof Error
+        ? error.message
+        : "Request failed";
+
+  toast.error(message || "Request failed", {
+    description: url,
+  });
+
+  if (errObj) {
+    errObj[ERROR_NOTIFIED] = true;
+  }
+};
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -62,12 +110,18 @@ export const apiClient = async <T = any>(
     retryDelay = 1000,
     cache: useCache = false,
     cacheTTL = 5 * 60 * 1000, // 5 minutes default
+    dedupe = true,
+    timeout,
     ...fetchOptions
   } = options;
 
+  const normalizedMethod = (fetchOptions.method || "GET").toUpperCase();
+  const serializedBody = serializeBody(fetchOptions.body);
+  const requestKey = `${normalizedMethod}:${path}:${serializedBody}`;
+
   // Check cache for GET requests
-  const cacheKey = `${path}:${JSON.stringify(fetchOptions.body || {})}`;
-  if (useCache && fetchOptions.method === undefined || fetchOptions.method === "GET") {
+  const cacheKey = requestKey;
+  if (useCache && (fetchOptions.method === undefined || fetchOptions.method === "GET")) {
     const cached = cache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < cached.ttl) {
       return cached.data;
@@ -83,11 +137,38 @@ export const apiClient = async <T = any>(
   let lastError: Error | null = null;
   let attempt = 0;
 
-  while (attempt <= retries) {
+  if (dedupe) {
+    const inFlight = inFlightRequests.get(requestKey);
+    if (inFlight) {
+      return inFlight;
+    }
+  }
+
+  const executeRequest = async (): Promise<T> => {
+    const controller = timeout ? new AbortController() : null;
+    const userSignal = fetchOptions.signal;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+    if (controller && userSignal) {
+      if (userSignal.aborted) {
+        controller.abort(userSignal.reason);
+      } else {
+        const onAbort = () => controller.abort(userSignal.reason);
+        userSignal.addEventListener("abort", onAbort, { once: true });
+      }
+    }
+
+    if (controller && timeout) {
+      timeoutId = setTimeout(() => {
+        controller.abort(new Error("Request timed out"));
+      }, timeout);
+    }
+
     try {
       const response = await fetch(url, {
         ...fetchOptions,
         headers,
+        signal: controller ? controller.signal : fetchOptions.signal,
       });
 
       const data = await response.json().catch(() => ({}));
@@ -110,11 +191,27 @@ export const apiClient = async <T = any>(
       }
 
       return data;
+    } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    }
+  };
+
+  while (attempt <= retries) {
+    try {
+      const promise = executeRequest();
+      if (dedupe) {
+        inFlightRequests.set(requestKey, promise);
+      }
+      const data = await promise;
+      return data;
     } catch (error) {
       lastError = error as Error;
 
       // Don't retry on 4xx errors (client errors)
       if (error instanceof ApiError && error.status && error.status >= 400 && error.status < 500) {
+        notifyRequestError(error, url);
         throw error;
       }
 
@@ -127,10 +224,16 @@ export const apiClient = async <T = any>(
       const delay = retryDelay * Math.pow(2, attempt);
       await sleep(delay);
       attempt++;
+    } finally {
+      if (dedupe) {
+        inFlightRequests.delete(requestKey);
+      }
     }
   }
 
-  throw lastError || new Error("Request failed after retries");
+  const finalError = lastError || new Error("Request failed after retries");
+  notifyRequestError(finalError, url);
+  throw finalError;
 };
 
 // Helper to cancel requests (for component unmounts)

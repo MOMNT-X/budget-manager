@@ -1,11 +1,18 @@
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Moon, Sun } from "lucide-react";
+import { Moon, Sun, Menu } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 export default function Navbar() {
   const navigate = useNavigate();
   const [isDark, setIsDark] = useState<boolean>(false);
+  const navLinks = [
+    { href: "#features", label: "Features" },
+    { href: "#pricing", label: "Pricing" },
+    { href: "#security", label: "Security" },
+    { href: "#faq", label: "FAQ" },
+  ];
 
   useEffect(() => {
     const saved = localStorage.getItem("theme");
@@ -30,10 +37,11 @@ export default function Navbar() {
         </div>
 
         <div className="hidden items-center gap-6 md:flex">
-          <Link to="#features" className="text-sm text-muted-foreground hover:text-foreground">Features</Link>
-          <Link to="#pricing" className="text-sm text-muted-foreground hover:text-foreground">Pricing</Link>
-          <Link to="#security" className="text-sm text-muted-foreground hover:text-foreground">Security</Link>
-          <Link to="#faq" className="text-sm text-muted-foreground hover:text-foreground">FAQ</Link>
+          {navLinks.map((link) => (
+            <a key={link.href} href={link.href} className="text-sm text-muted-foreground hover:text-foreground">
+              {link.label}
+            </a>
+          ))}
           <Button variant="ghost" onClick={toggleTheme} aria-label="Toggle theme">
             {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
@@ -45,7 +53,30 @@ export default function Navbar() {
           <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
             {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           </Button>
-          <Button size="sm" onClick={() => navigate("/signup")}>Get Started</Button>
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="icon" aria-label="Open navigation menu">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[280px] space-y-6">
+              <div className="space-y-4 pt-8">
+                {navLinks.map((link) => (
+                  <a
+                    key={link.href}
+                    href={link.href}
+                    className="block rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+                  >
+                    {link.label}
+                  </a>
+                ))}
+              </div>
+              <div className="space-y-3">
+                <Button className="w-full" onClick={() => navigate("/signup")}>Get Started</Button>
+                <Button variant="outline" className="w-full" onClick={() => navigate("/login")}>Sign In</Button>
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
     </nav>
