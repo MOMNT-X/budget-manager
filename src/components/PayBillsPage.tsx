@@ -19,7 +19,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { NotificationModal, EnhancedToast } from "@/components/notification-modal";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import { BASE_URL, sendBillPaidNotification } from "@/config/api";
+import { BASE_URL, sendBillPaidNotification, createBill, payBillWithTransfer, getBeneficiaries, getBills } from "@/config/api";
 
 interface Category {
   id: string;
@@ -214,14 +214,7 @@ export function PayBillsPage() {
 
   const fetchBeneficiaries = async () => {
     try {
-      const response = await fetch(`${BASE_URL}/beneficiaries`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-        },
-      });
-
-      const beneficiariesData = await response.json();
-      if (!response.ok) throw new Error(beneficiariesData?.message || 'Failed to fetch beneficiaries');
+      const beneficiariesData = await getBeneficiaries();
       setBeneficiaries(beneficiariesData);
     } catch (err) {
       console.error('Failed to fetch beneficiaries:', err);
@@ -250,14 +243,7 @@ export function PayBillsPage() {
       setError("");
       
       // Fetch all bills
-      const response = await fetch(`${BASE_URL}/bills`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-        },
-      });
-
-      const billsData = await response.json();
-      if (!response.ok) throw new Error(billsData?.message || 'Failed to fetch bills');
+      const billsData = await getBills();
       setBills(billsData);
 
       // Calculate summary
@@ -391,19 +377,9 @@ const handlePayBill = (bill: Bill) => {
         requestBody.recipientBankName = paymentTransferData.recipientBankName;
       }
 
-      const response = await fetch(`${BASE_URL}/bills/${selectedBill.id}/pay-transfer`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-      });
+      await payBillWithTransfer(selectedBill.id, requestBody);
 
-      const result = await response.json();
-      if (!response.ok) throw new Error(result?.message || 'Failed to process payment');
-
-      // SUCCESS
+      // SUCCESS - Only execute on successful response
       showNotification(
         'success',
         'Payment Successful!',
@@ -431,13 +407,12 @@ const handlePayBill = (bill: Bill) => {
       setPaymentAccountVerified(false);
 
     } catch (err) {
-      showNotification(
-        'error',
-        'Payment Failed',
-        err instanceof Error ? err.message : 'Unable to process payment. Please check your wallet balance and try again.'
-      );
-      setError(err instanceof Error ? err.message : 'Payment failed');
+      // ERROR - Only execute on error
+      const errorMessage = err instanceof Error ? err.message : 'Unable to process payment. Please check your wallet balance and try again.';
+      showNotification('error', 'Payment Failed', errorMessage);
+      setError(errorMessage);
     } finally {
+      // Cleanup - Always execute
       setPaymentLoading(false);
     }
   };
@@ -453,54 +428,40 @@ const handlePayBill = (bill: Bill) => {
       setAddBillLoading(true);
       setError("");
 
-      const response = await fetch(`${BASE_URL}/bills`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          categoryId: newBill.categoryId,
-          amount: parseFloat(newBill.amount),
-          description: newBill.description,
-          dueDate: newBill.dueDate,
-          autoPay: newBill.autoPay,
-          ...(newBill.autoPay ? {
-            recipientAccountNumber: autoPayRecipient.recipientAccountNumber,
-            recipientBankCode: autoPayRecipient.recipientBankCode,
-            recipientBankName: autoPayRecipient.recipientBankName,
-            recipientAccountName: autoPayRecipient.recipientAccountName,
-          } : {})
-        }),
-      });
-      
+      const payload = {
+        categoryId: newBill.categoryId,
+        amount: parseFloat(newBill.amount),
+        description: newBill.description,
+        dueDate: newBill.dueDate,
+        autoPay: newBill.autoPay,
+        ...(newBill.autoPay ? {
+          recipientAccountNumber: autoPayRecipient.recipientAccountNumber,
+          recipientBankCode: autoPayRecipient.recipientBankCode,
+          recipientBankName: autoPayRecipient.recipientBankName,
+          recipientAccountName: autoPayRecipient.recipientAccountName,
+        } : {})
+      };
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to create bill');
-      }
+      await createBill(payload);
+      
+      // SUCCESS - Only execute on successful response
+      showNotification('success', 'Bill Added', 'New bill has been added successfully');
       
       // Reset form and close modal
-      setNewBill({
-        categoryId: '',
-        amount: '',
-        description: '',
-        dueDate: '',
-        autoPay: false
-      });
-      setShowAddBillModal(false);
-
-    } catch (err) {
-
-      setError(err instanceof Error ? err.message : 'Failed to create bill');
-      showNotification('error', 'Error', err instanceof Error ? err.message : 'Failed to create bill');
-    } finally {
-      setAddBillLoading(false);
-      setShowAddBillModal(false);
-      showNotification('success', 'Bill Added', 'New bill has been added successfully');
       resetAddBillForm();
+      setShowAddBillModal(false);
+      
       // Refresh bills after successful creation
       await fetchBills();
+
+    } catch (err) {
+      // ERROR - Only execute on error
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create bill';
+      setError(errorMessage);
+      showNotification('error', 'Error', errorMessage);
+    } finally {
+      // Cleanup - Always execute
+      setAddBillLoading(false);
     }
   };
 
