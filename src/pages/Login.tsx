@@ -5,32 +5,7 @@ import { Mail, Lock, Eye, EyeOff, LogIn, Shield, CheckCircle } from "lucide-reac
 import Lottie from "lottie-react";
 import financeGuruAnimation from "@/assets/Finance guru.json";
 import { BASE_URL } from "@/config/api";
-
-// Utility function to clear all user data
-const clearAllUserData = () => {
-  // Clear all possible token variations
-  localStorage.removeItem("accessToken");
-  localStorage.removeItem("access_token");
-  localStorage.removeItem("token");
-  
-  // Clear user data
-  localStorage.removeItem("userId");
-  localStorage.removeItem("email");
-  localStorage.removeItem("username");
-  localStorage.removeItem("user");
-  
-  // Clear any other app-specific data that might exist
-  localStorage.removeItem("userProfile");
-  localStorage.removeItem("bankData");
-  localStorage.removeItem("transactions");
-  localStorage.removeItem("budget");
-  localStorage.removeItem("accountData");
-  
-  // Clear session storage as well
-  sessionStorage.clear();
-  
-  console.log("🧹 All user data cleared");
-};
+import { clearAllUserData } from "@/utils/utils";
 
 export default function LoginPage({ onAuthSuccess }: { onAuthSuccess?: () => void }) {
   const [formData, setFormData] = useState({ email: "", password: "" });

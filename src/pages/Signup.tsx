@@ -6,26 +6,7 @@ import Lottie from "lottie-react";
 import manageMoneyAnimation from "@/assets/Manage Money.json";
 import banks from "../components/banks";
 import { BASE_URL } from "@/config/api";
-
-// Utility function to clear all user data
-const clearAllUserData = () => {
-  localStorage.removeItem("accessToken");
-  localStorage.removeItem("access_token");
-  localStorage.removeItem("token");
-  localStorage.removeItem("userId");
-  localStorage.removeItem("email");
-  localStorage.removeItem("username");
-  localStorage.removeItem("user");
-  localStorage.removeItem("userProfile");
-  localStorage.removeItem("bankData");
-  localStorage.removeItem("transactions");
-  localStorage.removeItem("budget");
-  localStorage.removeItem("accountData");
-  localStorage.removeItem("hasSeenOnboardingTour");
-  localStorage.removeItem("isNewUser");
-  sessionStorage.clear();
-  console.log("🧹 All user data cleared");
-};
+import { clearAllUserData } from "@/utils/utils";
 
 export default function SignupPage({ onAuthSuccess }: { onAuthSuccess?: () => void }) {
   const [step, setStep] = useState(1);

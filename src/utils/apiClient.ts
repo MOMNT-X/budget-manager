@@ -1,4 +1,5 @@
 import { toast } from "sonner";
+import { redirectToLogin } from "./utils";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
@@ -174,6 +175,25 @@ export const apiClient = async <T = any>(
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
+        // Handle 401 Unauthorized - authentication expired
+        if (response.status === 401) {
+          const errorMessage = extractErrorMessage(
+            data,
+            "Unauthorized - Your session has expired"
+          );
+          
+          // Check if we're not already on a public route
+          const currentPath = typeof window !== "undefined" ? window.location.pathname : "";
+          const isPublicRoute = currentPath === "/login" || currentPath === "/signup" || currentPath === "/";
+          
+          if (!isPublicRoute) {
+            // Redirect to login with a message
+            redirectToLogin("Your session has expired. Please login again.");
+          }
+          
+          throw new ApiError(errorMessage, response.status, data);
+        }
+        
         const errorMessage = extractErrorMessage(
           data,
           `Request failed with status ${response.status}`
@@ -209,9 +229,22 @@ export const apiClient = async <T = any>(
     } catch (error) {
       lastError = error as Error;
 
+      // Handle network errors (offline scenarios)
+      if (error instanceof TypeError && error.message.includes("fetch")) {
+        // Check if user is offline
+        if (typeof navigator !== "undefined" && !navigator.onLine) {
+          toast.error("You are offline. Please check your internet connection.");
+        }
+        // Note: We don't redirect on network errors as they could be due to various reasons
+        // (server down, network issues, etc.). Only 401 errors trigger redirect to login.
+      }
+
       // Don't retry on 4xx errors (client errors)
       if (error instanceof ApiError && error.status && error.status >= 400 && error.status < 500) {
-        notifyRequestError(error, url);
+        // Don't notify 401 errors again as we already handled the redirect
+        if (error.status !== 401) {
+          notifyRequestError(error, url);
+        }
         throw error;
       }
 
